@@ -53,7 +53,7 @@ target_link_libraries(EasyTrigger PRIVATE
 )
 
 target_include_directories(EasyTrigger PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SuperTimecodeConverter
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/SuperTimecodeConverter
 )
 
 if(WIN32)
