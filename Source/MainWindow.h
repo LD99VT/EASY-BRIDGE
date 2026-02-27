@@ -6,6 +6,8 @@
 
 namespace bridge
 {
+class BridgeAudioScanThread;
+
 class ExpandCircleButton final : public juce::Component
 {
 public:
@@ -195,13 +197,14 @@ class MainContentComponent final : public juce::Component, private juce::Timer
 {
 public:
     MainContentComponent();
-    ~MainContentComponent() override = default;
+    ~MainContentComponent() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
     bool closeToTrayEnabled() const { return closeToTray_; }
 
 private:
+    friend class BridgeAudioScanThread;
     void timerCallback() override;
 
     void loadFontsAndIcon();
@@ -215,6 +218,9 @@ private:
     void updateWindowHeight();
 
     void refreshDeviceLists();
+    void startAudioDeviceScan();
+    void onAudioScanComplete (const juce::Array<engine::AudioChoice>& inputs,
+                              const juce::Array<engine::AudioChoice>& outputs);
     void refreshNetworkMidiLists();
     void refreshLtcDeviceListsByDriver();
     void fillAudioCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices);
@@ -246,6 +252,9 @@ private:
     juce::Array<engine::AudioChoice> outputChoices_;
     juce::Array<engine::AudioChoice> filteredInputChoices_;
     juce::Array<engine::AudioChoice> filteredOutputChoices_;
+    juce::Array<int> filteredInputIndices_;
+    juce::Array<int> filteredOutputIndices_;
+    std::unique_ptr<BridgeAudioScanThread> scanThread_;
     std::unique_ptr<juce::LookAndFeel_V4> lookAndFeel_;
     juce::Image appIcon_;
     juce::Font titleEasyFont_;

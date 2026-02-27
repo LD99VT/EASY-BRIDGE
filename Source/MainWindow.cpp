@@ -17,6 +17,7 @@ const auto kInput = juce::Colour::fromRGB (0x24, 0x24, 0x24);   // UI_BG_INPUT
 const auto kHeader = juce::Colour::fromRGB (0x2f, 0x2f, 0x32);
 const auto kTeal = juce::Colour::fromRGB (0x3d, 0x80, 0x70);    // UI_TEAL
 const auto kTealOff = juce::Colour::fromRGB (0x48, 0x48, 0x48); // UI_TEAL_OFF
+constexpr int kPlaceholderItemId = 10000;
 
 juce::String parseBindIpFromAdapterLabel (juce::String text)
 {
@@ -61,10 +62,14 @@ void setupDbSlider (juce::Slider& s)
 void fillRateCombo (juce::ComboBox& combo)
 {
     combo.clear();
-    combo.addItem ("44100", 44100);
-    combo.addItem ("48000", 48000);
-    combo.addItem ("96000", 96000);
-    combo.setSelectedId (44100, juce::dontSendNotification);
+    combo.addItem ("Default", 1);
+    combo.addItem ("44100", 2);
+    combo.addItem ("48000", 3);
+    combo.addItem ("88200", 4);
+    combo.addItem ("96000", 5);
+    combo.addItem ("176400", 6);
+    combo.addItem ("192000", 7);
+    combo.setSelectedId (1, juce::dontSendNotification);
 }
 
 void fillChannelCombo (juce::ComboBox& combo)
@@ -93,12 +98,7 @@ bool matchesDriverFilter (const juce::String& driverUi, const juce::String& type
     if (d.startsWith ("default"))
         return true;
     const auto t = normalizeDriverKey (typeName);
-    if (d == "asio") return t.contains ("asio");
-    if (d == "directsound") return t.contains ("directsound");
-    if (d == "coreaudio") return t.contains ("coreaudio");
-    if (d == "alsa") return t.contains ("alsa");
-    if (d == "windowsaudio") return t.contains ("windowsaudio");
-    return t == d || t.contains (d);
+    return t == d;
 }
 
 void fillDriverCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices, const juce::String& previousText)
@@ -241,7 +241,95 @@ private:
     MainWindow& owner_;
 };
 
+static int findFilteredIndex (const juce::Array<int>& filteredIndices,
+                              const juce::Array<engine::AudioChoice>& entries,
+                              const juce::String& typeName,
+                              const juce::String& deviceName)
+{
+    if (deviceName.isEmpty())
+        return -1;
+
+    if (typeName.isNotEmpty())
+    {
+        for (int i = 0; i < filteredIndices.size(); ++i)
+        {
+            const int realIdx = filteredIndices[i];
+            if (juce::isPositiveAndBelow (realIdx, entries.size())
+                && entries[realIdx].typeName == typeName
+                && entries[realIdx].deviceName == deviceName)
+                return i;
+        }
+    }
+
+    for (int i = 0; i < filteredIndices.size(); ++i)
+    {
+        const int realIdx = filteredIndices[i];
+        if (juce::isPositiveAndBelow (realIdx, entries.size())
+            && entries[realIdx].deviceName == deviceName)
+            return i;
+    }
+    return -1;
 }
+
+}
+
+class BridgeAudioScanThread final : public juce::Thread
+{
+public:
+    explicit BridgeAudioScanThread (MainContentComponent* owner)
+        : juce::Thread ("BridgeAudioDeviceScan"), safeOwner_ (owner)
+    {
+    }
+
+    void run() override
+    {
+        juce::Array<engine::AudioChoice> inputs;
+        juce::Array<engine::AudioChoice> outputs;
+
+        juce::AudioDeviceManager tempMgr;
+        tempMgr.initialise (128, 128, nullptr, false);
+
+        for (auto* type : tempMgr.getAvailableDeviceTypes())
+        {
+            if (threadShouldExit())
+                return;
+
+            type->scanForDevices();
+            const auto typeName = type->getTypeName();
+
+            for (const auto& name : type->getDeviceNames (true))
+            {
+                engine::AudioChoice c;
+                c.typeName = typeName;
+                c.deviceName = name;
+                c.displayName = typeName + ": " + name;
+                inputs.add (c);
+            }
+
+            for (const auto& name : type->getDeviceNames (false))
+            {
+                engine::AudioChoice c;
+                c.typeName = typeName;
+                c.deviceName = name;
+                c.displayName = typeName + ": " + name;
+                outputs.add (c);
+            }
+        }
+
+        if (threadShouldExit())
+            return;
+
+        auto safe = safeOwner_;
+        juce::MessageManager::callAsync ([safe, inputs, outputs]()
+        {
+            if (auto* owner = safe.getComponent())
+                owner->onAudioScanComplete (inputs, outputs);
+        });
+    }
+
+private:
+    juce::Component::SafePointer<MainContentComponent> safeOwner_;
+};
 
 MainContentComponent::MainContentComponent()
 {
@@ -483,11 +571,9 @@ MainContentComponent::MainContentComponent()
     addAndMakeVisible (oscAddrFloatEditor_);
     addAndMakeVisible (artnetDestIpEditor_);
 
-    refreshDeviceLists();
+    startAudioDeviceScan();
     loadRuntimePrefs();
     maybeAutoLoadConfig();
-    if (! (autoLoadOnStartup_ && lastConfigFile_.existsAsFile()))
-        restartSelectedSource();
     // Parent window may not be attached yet inside the component ctor.
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainContentComponent> (this)]
     {
@@ -495,6 +581,12 @@ MainContentComponent::MainContentComponent()
             safe->updateWindowHeight();
     });
     startTimerHz (60);
+}
+
+MainContentComponent::~MainContentComponent()
+{
+    if (scanThread_ != nullptr && scanThread_->isThreadRunning())
+        scanThread_->stopThread (2000);
 }
 
 int MainContentComponent::calcPreferredHeight() const
@@ -937,9 +1029,14 @@ void MainContentComponent::restartSelectedSource()
     if (src == 1)
     {
         bridgeEngine_.setInputSource (engine::InputSource::LTC);
-        const int idx = ltcInDeviceCombo_.getSelectedItemIndex();
-        if (juce::isPositiveAndBelow (idx, filteredInputChoices_.size()))
-            bridgeEngine_.startLtcInput (filteredInputChoices_[idx], comboChannelIndex (ltcInChannelCombo_), comboSampleRate (ltcInSampleRateCombo_), 512, err);
+        const int selectedId = ltcInDeviceCombo_.getSelectedId();
+        const int idx = selectedId > 0 ? selectedId - 1 : -1;
+        if (juce::isPositiveAndBelow (idx, filteredInputIndices_.size()))
+            bridgeEngine_.startLtcInput (inputChoices_[filteredInputIndices_[idx]],
+                                         comboChannelIndex (ltcInChannelCombo_),
+                                         comboSampleRate (ltcInSampleRateCombo_),
+                                         0,
+                                         err);
     }
     else if (src == 2)
     {
@@ -976,9 +1073,14 @@ void MainContentComponent::onOutputSettingsChanged()
     juce::String err;
     if (ltcOutSwitch_.getState())
     {
-        const int idx = ltcOutDeviceCombo_.getSelectedItemIndex();
-        if (juce::isPositiveAndBelow (idx, filteredOutputChoices_.size()))
-            bridgeEngine_.startLtcOutput (filteredOutputChoices_[idx], comboChannelIndex (ltcOutChannelCombo_), comboSampleRate (ltcOutSampleRateCombo_), 512, err);
+        const int selectedId = ltcOutDeviceCombo_.getSelectedId();
+        const int idx = selectedId > 0 ? selectedId - 1 : -1;
+        if (juce::isPositiveAndBelow (idx, filteredOutputIndices_.size()))
+            bridgeEngine_.startLtcOutput (outputChoices_[filteredOutputIndices_[idx]],
+                                          comboChannelIndex (ltcOutChannelCombo_),
+                                          comboSampleRate (ltcOutSampleRateCombo_),
+                                          0,
+                                          err);
         bridgeEngine_.setLtcOutputEnabled (true);
     }
     else
@@ -1056,50 +1158,110 @@ void MainContentComponent::timerCallback()
 
 void MainContentComponent::refreshDeviceLists()
 {
+    startAudioDeviceScan();
+}
+
+void MainContentComponent::startAudioDeviceScan()
+{
+    if (scanThread_ != nullptr && scanThread_->isThreadRunning())
+    {
+        if (! scanThread_->stopThread (2000))
+            return;
+    }
+
+    scanThread_ = std::make_unique<BridgeAudioScanThread> (this);
+    scanThread_->startThread();
+}
+
+void MainContentComponent::onAudioScanComplete (const juce::Array<engine::AudioChoice>& inputs,
+                                                const juce::Array<engine::AudioChoice>& outputs)
+{
     const auto prevInDriver = ltcInDriverCombo_.getText();
     const auto prevOutDriver = ltcOutDriverCombo_.getText();
 
-    inputChoices_ = bridgeEngine_.scanAudioInputs();
-    outputChoices_ = bridgeEngine_.scanAudioOutputs();
+    inputChoices_ = inputs;
+    outputChoices_ = outputs;
 
     fillDriverCombo (ltcInDriverCombo_, inputChoices_, prevInDriver);
     fillDriverCombo (ltcOutDriverCombo_, outputChoices_, prevOutDriver);
 
     refreshLtcDeviceListsByDriver();
     refreshNetworkMidiLists();
+
+    restartSelectedSource();
+    onOutputSettingsChanged();
 }
 
 void MainContentComponent::refreshLtcDeviceListsByDriver()
 {
-    const auto prevIn = ltcInDeviceCombo_.getText();
-    const auto prevOut = ltcOutDeviceCombo_.getText();
+    juce::String prevInType, prevInDev;
+    juce::String prevOutType, prevOutDev;
+
+    const int prevInId = ltcInDeviceCombo_.getSelectedId();
+    const int prevInIdx = prevInId > 0 ? prevInId - 1 : -1;
+    if (juce::isPositiveAndBelow (prevInIdx, filteredInputIndices_.size()))
+    {
+        const int realIdx = filteredInputIndices_[prevInIdx];
+        if (juce::isPositiveAndBelow (realIdx, inputChoices_.size()))
+        {
+            prevInType = inputChoices_[realIdx].typeName;
+            prevInDev = inputChoices_[realIdx].deviceName;
+        }
+    }
+
+    const int prevOutId = ltcOutDeviceCombo_.getSelectedId();
+    const int prevOutIdx = prevOutId > 0 ? prevOutId - 1 : -1;
+    if (juce::isPositiveAndBelow (prevOutIdx, filteredOutputIndices_.size()))
+    {
+        const int realIdx = filteredOutputIndices_[prevOutIdx];
+        if (juce::isPositiveAndBelow (realIdx, outputChoices_.size()))
+        {
+            prevOutType = outputChoices_[realIdx].typeName;
+            prevOutDev = outputChoices_[realIdx].deviceName;
+        }
+    }
 
     filteredInputChoices_.clear();
     filteredOutputChoices_.clear();
+    filteredInputIndices_.clear();
+    filteredOutputIndices_.clear();
 
-    for (const auto& c : inputChoices_)
+    for (int i = 0; i < inputChoices_.size(); ++i)
+    {
+        const auto& c = inputChoices_[i];
         if (matchesDriverFilter (ltcInDriverCombo_.getText(), c.typeName))
+        {
             filteredInputChoices_.add (c);
-    for (const auto& c : outputChoices_)
+            filteredInputIndices_.add (i);
+        }
+    }
+
+    for (int i = 0; i < outputChoices_.size(); ++i)
+    {
+        const auto& c = outputChoices_[i];
         if (matchesDriverFilter (ltcOutDriverCombo_.getText(), c.typeName))
+        {
             filteredOutputChoices_.add (c);
+            filteredOutputIndices_.add (i);
+        }
+    }
 
     fillAudioCombo (ltcInDeviceCombo_, filteredInputChoices_);
     fillAudioCombo (ltcOutDeviceCombo_, filteredOutputChoices_);
 
-    auto restoreByText = [] (juce::ComboBox& combo, const juce::String& text)
+    if (prevInDev.isNotEmpty())
     {
-        for (int i = 0; i < combo.getNumItems(); ++i)
-        {
-            if (combo.getItemText (i) == text)
-            {
-                combo.setSelectedItemIndex (i, juce::dontSendNotification);
-                return;
-            }
-        }
-    };
-    if (prevIn.isNotEmpty()) restoreByText (ltcInDeviceCombo_, prevIn);
-    if (prevOut.isNotEmpty()) restoreByText (ltcOutDeviceCombo_, prevOut);
+        const int idx = findFilteredIndex (filteredInputIndices_, inputChoices_, prevInType, prevInDev);
+        if (idx >= 0)
+            ltcInDeviceCombo_.setSelectedId (idx + 1, juce::dontSendNotification);
+    }
+
+    if (prevOutDev.isNotEmpty())
+    {
+        const int idx = findFilteredIndex (filteredOutputIndices_, outputChoices_, prevOutType, prevOutDev);
+        if (idx >= 0)
+            ltcOutDeviceCombo_.setSelectedId (idx + 1, juce::dontSendNotification);
+    }
 }
 
 void MainContentComponent::refreshNetworkMidiLists()
@@ -1143,21 +1305,30 @@ void MainContentComponent::refreshNetworkMidiLists()
 void MainContentComponent::fillAudioCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices)
 {
     combo.clear();
+    if (choices.isEmpty())
+    {
+        combo.addItem ("(No audio devices)", kPlaceholderItemId);
+        combo.setSelectedId (kPlaceholderItemId, juce::dontSendNotification);
+        return;
+    }
+
     for (int i = 0; i < choices.size(); ++i)
         combo.addItem (choices[i].displayName, i + 1);
-    if (combo.getNumItems() > 0)
-        combo.setSelectedItemIndex (0, juce::dontSendNotification);
+    combo.setSelectedId (1, juce::dontSendNotification);
 }
 
 double MainContentComponent::comboSampleRate (const juce::ComboBox& combo)
 {
-    return juce::jmax (1.0, combo.getText().getDoubleValue());
+    const auto text = combo.getText().trim();
+    if (text.startsWithIgnoreCase ("default"))
+        return 0.0;
+    return juce::jmax (0.0, text.getDoubleValue());
 }
 
 int MainContentComponent::comboBufferSize (const juce::ComboBox& combo)
 {
     auto v = combo.getText().getIntValue();
-    return v <= 0 ? 512 : v;
+    return v <= 0 ? 0 : v;
 }
 
 int MainContentComponent::comboChannelIndex (const juce::ComboBox& combo)
@@ -1499,6 +1670,7 @@ void MainContentComponent::openSettingsMenu()
     m.addItem (1, "Save config...");
     m.addItem (2, "Load config...");
     m.addItem (3, "Reset config");
+    m.addItem (6, "Rescan audio devices");
     m.addSeparator();
     m.addItem (5, "Load on startup", true, autoLoadOnStartup_);
     m.addItem (4, "Close to tray", true, closeToTray_);
@@ -1514,6 +1686,11 @@ void MainContentComponent::openSettingsMenu()
                              case 1: safe->saveConfigAs(); break;
                              case 2: safe->loadConfigFrom(); break;
                              case 3: safe->resetToDefaults(); break;
+                             case 6:
+                                 safe->refreshDeviceLists();
+                                 safe->setStatusText ("STOPPED - audio devices rescanned",
+                                                      juce::Colour::fromRGB (255, 120, 110));
+                                 break;
                              case 4:
                                  safe->closeToTray_ = ! safe->closeToTray_;
                                  safe->saveRuntimePrefs();
