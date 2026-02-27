@@ -14,6 +14,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(juce)
 
+set(_STC_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SuperTimecodeConverter")
+if(EXISTS "${_STC_LOCAL}")
+  set(STC_DIR "${_STC_LOCAL}")
+else()
+  FetchContent_Declare(
+    SuperTimecodeConverter
+    GIT_REPOSITORY https://github.com/fiverecords/SuperTimecodeConverter.git
+    GIT_TAG main
+  )
+  FetchContent_MakeAvailable(SuperTimecodeConverter)
+  set(STC_DIR "${supertimecodeconverter_SOURCE_DIR}")
+endif()
+
 juce_add_gui_app(EasyTrigger
   PRODUCT_NAME "Easy Trigger v2"
 )
@@ -53,7 +66,7 @@ target_link_libraries(EasyTrigger PRIVATE
 )
 
 target_include_directories(EasyTrigger PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/SuperTimecodeConverter
+  ${STC_DIR}
 )
 
 if(WIN32)
