@@ -81,6 +81,8 @@ juce::String normalizeDriverKey (juce::String s)
     s = s.toLowerCase().trim();
     if (s.contains ("asio")) return "asio";
     if (s.contains ("directsound")) return "directsound";
+    if (s.contains ("coreaudio")) return "coreaudio";
+    if (s.contains ("alsa")) return "alsa";
     if (s.contains ("wasapi") || s.contains ("windows audio")) return "windowsaudio";
     return s;
 }
@@ -93,8 +95,41 @@ bool matchesDriverFilter (const juce::String& driverUi, const juce::String& type
     const auto t = normalizeDriverKey (typeName);
     if (d == "asio") return t.contains ("asio");
     if (d == "directsound") return t.contains ("directsound");
+    if (d == "coreaudio") return t.contains ("coreaudio");
+    if (d == "alsa") return t.contains ("alsa");
     if (d == "windowsaudio") return t.contains ("windowsaudio");
-    return true;
+    return t == d || t.contains (d);
+}
+
+void fillDriverCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices, const juce::String& previousText)
+{
+    combo.clear();
+    combo.addItem ("Default (all devices)", 1);
+
+    juce::StringArray seen;
+    for (const auto& c : choices)
+    {
+        if (c.typeName.isNotEmpty() && ! seen.contains (c.typeName))
+            seen.add (c.typeName);
+    }
+
+    seen.sortNatural();
+    for (int i = 0; i < seen.size(); ++i)
+        combo.addItem (seen[i], i + 2);
+
+    if (previousText.isNotEmpty())
+    {
+        for (int i = 0; i < combo.getNumItems(); ++i)
+        {
+            if (combo.getItemText (i) == previousText)
+            {
+                combo.setSelectedItemIndex (i, juce::dontSendNotification);
+                return;
+            }
+        }
+    }
+
+    combo.setSelectedId (1, juce::dontSendNotification);
 }
 
 float dbToLinearGain (double db)
@@ -309,9 +344,6 @@ MainContentComponent::MainContentComponent()
     for (auto* c : { &ltcInDriverCombo_, &ltcOutDriverCombo_ })
     {
         c->addItem ("Default (all devices)", 1);
-        c->addItem ("ASIO", 2);
-        c->addItem ("WASAPI", 3);
-        c->addItem ("DirectSound", 4);
         c->setSelectedId (1, juce::dontSendNotification);
         styleCombo (*c);
     }
@@ -1024,8 +1056,15 @@ void MainContentComponent::timerCallback()
 
 void MainContentComponent::refreshDeviceLists()
 {
+    const auto prevInDriver = ltcInDriverCombo_.getText();
+    const auto prevOutDriver = ltcOutDriverCombo_.getText();
+
     inputChoices_ = bridgeEngine_.scanAudioInputs();
     outputChoices_ = bridgeEngine_.scanAudioOutputs();
+
+    fillDriverCombo (ltcInDriverCombo_, inputChoices_, prevInDriver);
+    fillDriverCombo (ltcOutDriverCombo_, outputChoices_, prevOutDriver);
+
     refreshLtcDeviceListsByDriver();
     refreshNetworkMidiLists();
 }
