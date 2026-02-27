@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Easy Bridge v2 - Full UI Guide</title>
+  <style>
+    :root {
+      --bg: #242628;
+      --bg-soft: #2a2d30;
+      --panel: #31353a;
+      --panel-2: #2d3136;
+      --line: #4a525c;
+      --text: #edf1f5;
+      --muted: #c3ccd7;
+      --accent: #67d47b;
+      --accent2: #72c7ff;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #2a2d30 0%, var(--bg) 100%);
+      line-height: 1.45;
+      padding: 18px;
+    }
+
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 14px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .sidebar h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .nav {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav li + li { margin-top: 6px; }
+    .nav a {
+      display: block;
+      text-decoration: none;
+      color: var(--muted);
+      background: #353a40;
+      border: 1px solid #4c545e;
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+    }
+    .nav a:hover {
+      color: var(--text);
+      border-color: #6a7685;
+      background: #3b4148;
+    }
+
+    .main section,
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .hero p {
+      margin: 6px 0;
+      color: var(--muted);
+    }
+
+    section h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      color: var(--accent);
+    }
+    .section-desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .item {
+      margin-top: 10px;
+      background: #2e3339;
+      border: 1px solid #4a5360;
+      border-radius: 10px;
+      padding: 9px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 320px;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .desc h3 {
+      margin: 0 0 6px;
+      color: var(--accent2);
+      font-size: 20px;
+    }
+    .desc p {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .desc ul {
+      margin: 6px 0 0 18px;
+      color: var(--muted);
+    }
+    .desc li { margin: 3px 0; }
+
+    figure {
+      margin: 0;
+      background: #343941;
+      border: 1px solid #515b68;
+      border-radius: 8px;
+      padding: 5px;
+      width: 100%;
+      max-width: 320px;
+      justify-self: end;
+    }
+    img {
+      width: 100%;
+      max-width: 308px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 4px;
+      border: 1px solid #5a6575;
+      background: #24282d;
+    }
+    figcaption {
+      margin-top: 5px;
+      color: #d2dbe6;
+      font-size: 12px;
+    }
+
+    code {
+      background: #3b4048;
+      border: 1px solid #58606c;
+      border-radius: 5px;
+      padding: 1px 5px;
+      color: #f7f9fc;
+      font-size: .9em;
+    }
+    .danger { color: var(--danger); font-weight: 700; }
+
+    @media (max-width: 1100px) {
+      .page { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+    }
+    @media (max-width: 860px) {
+      .item { grid-template-columns: 1fr; }
+      figure { justify-self: start; max-width: 100%; }
+      img { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <h2>Page Contents</h2>
+      <ul class="nav">
+        <li><a href="#general">General</a></li>
+        <li><a href="#input-source">Input Source</a></li>
+        <li><a href="#ltc">Input LTC</a></li>
+        <li><a href="#mtc">Input MTC</a></li>
+        <li><a href="#artnet">Input ArtNet</a></li>
+        <li><a href="#osc">Input OSC</a></li>
+        <li><a href="#out-ltc">Out LTC</a></li>
+        <li><a href="#out-mtc">Out MTC</a></li>
+        <li><a href="#out-artnet">Out ArtNet</a></li>
+        <li><a href="#status-bar">Status Bar</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <section class="hero" id="general">
+        <h1>Easy Bridge v2 - Full UI Guide</h1>
+        <p>Easy Bridge converts one incoming timecode source into up to three simultaneous outputs: <code>Out LTC</code>, <code>Out MTC</code>, and <code>Out ArtNet</code>.</p>
+        <p>This guide is organized by category. Text is on the left, image is on the right.</p>
+        <p><b>Important setup notes:</b> If MIDI ports are missing, install <code>python-rtmidi</code>. On Windows LTC workflows, ASIO is used for devices like ReaRoute (Reaper). For Art-Net output, ensure UDP port <code>6454</code> is allowed by firewall.</p>
+
+        <article class="item">
+          <div class="desc">
+            <h3>Header (App name, version, Help button)</h3>
+            <ul>
+              <li>Version is shown in header (example: <code>v2.1.1</code>).</li>
+              <li><code>?</code> opens this help page.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/to-crop_0011_Header.png" alt="Header row" /><figcaption>Header row.</figcaption></figure>
+        </article>
+
+        <article class="item">
+          <div class="desc">
+            <h3>Main Timecode Clock</h3>
+            <ul>
+              <li>Shows decoded timecode in real time.</li>
+              <li>If no valid signal is present, it stays at zero.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/to-crop_0012_Timer.png" alt="Main timecode clock" /><figcaption>Clock row.</figcaption></figure>
+        </article>
+      </section>
+
+      <section id="input-source">
+        <h2>Input Source</h2>
+        <p class="section-desc">This category selects which protocol is currently used as the incoming timecode source.</p>
+        <article class="item">
+          <div class="desc"><h3>Source Selector</h3><p>Select active input protocol: LTC, MTC, Art-Net, or OSC.</p></div>
+          <figure><img src="UI/to-crop_0000_MTC-In.png" alt="Source selector" /><figcaption>Source row.</figcaption></figure>
+        </article>
+      </section>
+
+      <section id="ltc">
+        <h2>Input LTC</h2>
+        <p class="section-desc">Rows used when <code>LTC</code> is selected as the source.</p>
+        <article class="item"><div class="desc"><h3>LTC Source</h3><p>Select LTC as the input timecode source.</p></div><figure><img src="UI/to-crop_0013_LTC-Source.png" alt="LTC source" /><figcaption>LTC source row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>LTC Driver</h3><p>Chooses audio host API for LTC input.</p></div><figure><img src="UI/to-crop_0014_LTC-IN-Driver.png" alt="LTC driver" /><figcaption>Driver row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>LTC Device (Input)</h3><p>Selects input audio device carrying LTC signal.</p></div><figure><img src="UI/to-crop_0015_LTC-IN-Device-In.png" alt="LTC input device" /><figcaption>Device (input) row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>LTC Channel</h3><p>Selects channel used for LTC decode.</p></div><figure><img src="UI/to-crop_0016_LTC-IN-Channel.png" alt="LTC channel" /><figcaption>Channel row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>LTC Sample Rate</h3><p>Sets decode sample rate; keep it matched with source setup.</p></div><figure><img src="UI/to-crop_0017_LTC-IN-Sample-Rate.png" alt="LTC sample rate" /><figcaption>Sample rate row.</figcaption></figure></article>
+        <article class="item">
+          <div class="desc">
+            <h3>LTC Level</h3>
+            <p>Input level meter shows the strength of the LTC audio signal in real time. When the source is sending valid LTC, the green bar fills according to the input level.</p>
+            <ul>
+              <li>The meter has a dark background (same style as the dropdown fields) so the bar is easy to read.</li>
+              <li>If the bar stays empty, check device selection, sample rate, and that the source is actually outputting LTC.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/to-crop_0018_LTC-IN-Levl.png" alt="Level meter" /><figcaption>Level meter row.</figcaption></figure>
+        </article>
+        <article class="item">
+          <div class="desc">
+            <h3>Input Gain</h3>
+            <p>Slider to adjust the input gain in dB (typically from −24 to +24 dB). Use it to match the LTC source level so the decoder receives a stable signal.</p>
+            <ul>
+              <li>The value is shown next to the slider (e.g. <code>0 dB</code>). Double‑click the slider to reset to 0 dB.</li>
+              <li>Keep the Level meter in a healthy range (not clipping, not too low) for reliable timecode.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/to-crop_0019_LTC-IN-Gane.png" alt="Input gain slider" /><figcaption>Input gain row.</figcaption></figure>
+        </article>
+      </section>
+
+      <section id="mtc">
+        <h2>Input MTC</h2>
+        <p class="section-desc">Rows used when <code>MTC</code> is selected as the source.</p>
+        <article class="item"><div class="desc"><h3>MTC Source</h3><p>Choose MTC in source dropdown.</p></div><figure><img src="UI/to-crop_0000_MTC-In.png" alt="MTC source" /><figcaption>MTC source row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>MTC MIDI Input</h3><p>Select MIDI input port with incoming MTC.</p></div><figure><img src="UI/to-crop_0001_MTC-Midi-In.png" alt="MTC input" /><figcaption>MIDI input row.</figcaption></figure></article>
+      </section>
+
+      <section id="artnet">
+        <h2>Input ArtNet</h2>
+        <p class="section-desc">Rows used when <code>Art-Net</code> is selected as the source.</p>
+        <article class="item"><div class="desc"><h3>Art-Net Source</h3><p>Choose Art-Net in source dropdown.</p></div><figure><img src="UI/to-crop_0002_ArtNet-In.png" alt="Art-Net source" /><figcaption>Art-Net source row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Art-Net Adapter</h3><p>Select local network adapter for listening.</p></div><figure><img src="UI/to-crop_0003_ArtNet-In-Adapter.png" alt="Art-Net adapter" /><figcaption>Adapter row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Art-Net Listen IP</h3><p>Set bind IP, usually <code>0.0.0.0</code> for all interfaces.</p></div><figure><img src="UI/to-crop_0004_ArtNet-In-IP.png" alt="Art-Net listen IP" /><figcaption>Listen IP row.</figcaption></figure></article>
+      </section>
+
+      <section id="osc">
+        <h2>Input OSC</h2>
+        <p class="section-desc">Rows used when <code>OSC</code> is selected as the source.</p>
+        <article class="item"><div class="desc"><h3>OSC Source</h3><p>Choose OSC in source dropdown.</p></div><figure><img src="UI/to-crop_0005_OSC-In.png" alt="OSC source" /><figcaption>OSC source row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>OSC Adapter</h3><p>Select local adapter for OSC listener.</p></div><figure><img src="UI/to-crop_0006_OSC-In-Adapter.png" alt="OSC adapter" /><figcaption>OSC adapter row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>OSC Listen IP</h3><p>Set OSC bind IP address.</p></div><figure><img src="UI/to-crop_0007_OSC-In-IP.png" alt="OSC listen IP" /><figcaption>OSC listen IP row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>OSC Port</h3><p>UDP port used for incoming OSC time messages.</p></div><figure><img src="UI/to-crop_0008_OSC-In-Oprt.png" alt="OSC port" /><figcaption>OSC port row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>OSC FPS</h3><p>Frame-rate interpretation for incoming OSC values.</p></div><figure><img src="UI/to-crop_0009_OSC-In-Rate.png" alt="OSC FPS" /><figcaption>OSC FPS row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>OSC Commands</h3><p>Address mapping for OSC time fields. The default examples are Reaper OSC commands, but for any other DAW you can find and assign equivalent OSC paths.</p></div><figure><img src="UI/to-crop_0010_OSC-In-Commands.png" alt="OSC commands" /><figcaption>OSC command row.</figcaption></figure></article>
+      </section>
+
+      <section id="out-ltc">
+        <h2>Out LTC</h2>
+        <p class="section-desc">Rows that control LTC output transmission.</p>
+        <article class="item"><div class="desc"><h3>Out LTC</h3><p>Enable LTC output stream.</p></div><figure><img src="UI/to-crop_0020_OUT-LTC.png" alt="Out LTC" /><figcaption>Out LTC master row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Driver</h3><p>Chooses audio host API for LTC output.</p></div><figure><img src="UI/to-crop_0021_OUT-LTC-Drive.png" alt="Out LTC driver" /><figcaption>Out LTC driver row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Device</h3><p>Select output audio device for LTC transmission.</p></div><figure><img src="UI/to-crop_0022_OUT-LTC-Device.png" alt="LTC device out" /><figcaption>LTC output device row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Channel</h3><p>Selects channel used for LTC output.</p></div><figure><img src="UI/to-crop_0023_OUT-LTC-Channel.png" alt="Out LTC channel" /><figcaption>Out LTC channel row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Sample Rate</h3><p>Sets output sample rate; keep it matched with the target device setup.</p></div><figure><img src="UI/to-crop_0024_OUT-LTC-Rate.png" alt="Out LTC sample rate" /><figcaption>Out LTC sample rate row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Offset</h3><p>Frame offset compensation for LTC output.</p></div><figure><img src="UI/to-crop_0025_OUT-LTC-Offcet.png" alt="LTC offset" /><figcaption>LTC offset row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Out LTC Level</h3><p>Output level control for the LTC audio signal.</p></div><figure><img src="UI/to-crop_0026_OUT-LTC-Level.png" alt="Out LTC level" /><figcaption>Out LTC level row.</figcaption></figure></article>
+      </section>
+
+      <section id="out-mtc">
+        <h2>Out MTC</h2>
+        <p class="section-desc">Rows that control MTC output transmission.</p>
+        <article class="item"><div class="desc"><h3>Out MTC</h3><p>Enable MTC output stream.</p></div><figure><img src="UI/to-crop_0027_MTC-Out.png" alt="Out MTC" /><figcaption>Out MTC master row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>MIDI Output</h3><p>Select destination MIDI port for MTC transmission.</p></div><figure><img src="UI/to-crop_0028_MTC-Out-Midi-Out.png" alt="MIDI out params" /><figcaption>MIDI out params row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>MTC Offset</h3><p>Frame offset compensation for MTC output.</p></div><figure><img src="UI/to-crop_0029_MTC-Out-Offcet.png" alt="MTC offset" /><figcaption>MTC offset row.</figcaption></figure></article>
+      </section>
+
+      <section id="out-artnet">
+        <h2>Out ArtNet</h2>
+        <p class="section-desc">Rows that control Art-Net output transmission.</p>
+        <article class="item"><div class="desc"><h3>Out ArtNet</h3><p>Enable Art-Net timecode output.</p></div><figure><img src="UI/to-crop_0030_Out-Artnet.png" alt="Out ArtNet" /><figcaption>Out ArtNet master row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Art-Net Output Interface</h3><p>Select network interface for outgoing Art-Net packets.</p></div><figure><img src="UI/to-crop_0031_Out-Artnet-interface.png" alt="ArtNet interface" /><figcaption>Art-Net interface row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Art-Net Destination IP</h3><p>Set destination IP addresses (broadcast/unicast).</p></div><figure><img src="UI/to-crop_0032_Out-Artnet-Destination-Ip.png" alt="ArtNet out IP" /><figcaption>Out IP row.</figcaption></figure></article>
+        <article class="item"><div class="desc"><h3>Art-Net Offset</h3><p>Frame offset compensation for Art-Net output.</p></div><figure><img src="UI/to-crop_0033_Out-Artnet-Offcet.png" alt="Art-Net offset" /><figcaption>Art-Net offset row.</figcaption></figure></article>
+      </section>
+
+      <section id="status-bar">
+        <h2>Status Bar</h2>
+        <p class="section-desc">Bottom area for runtime state and control buttons.</p>
+        <article class="item">
+          <div class="desc">
+            <h3>Status Line</h3>
+            <ul>
+              <li><span class="danger">STOPPED</span> means no valid timecode or invalid configuration.</li>
+              <li>Read this line first when diagnosing input/output problems.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/to-crop_0034_Status-_Ar.png" alt="Status bar" /><figcaption>Status bar row.</figcaption></figure>
+        </article>
+        <article class="item">
+          <div class="desc">
+            <h3>Status Details Window (click status bar)</h3>
+            <p>Clicking the status bar opens a details popup with real-time diagnostic values.</p>
+            <ul>
+              <li><code>Input Timecode</code>: currently received timecode.</li>
+              <li><code>FPS</code>: active frame-rate interpretation.</li>
+              <li><code>LTC Output</code>, <code>MTC Output</code>, <code>ArtNet Output</code>: per-output offset display.</li>
+              <li><code>Processing Latency</code>: internal processing delay in milliseconds and frames.</li>
+            </ul>
+          </div>
+          <figure><img src="UI/status window.png" alt="Status details window" /><figcaption>Status details popup opened from the status bar.</figcaption></figure>
+        </article>
+        <article class="item">
+          <div class="desc">
+            <h3>Settings Menu</h3>
+            <p>Clicking <code>Settings</code> opens a configuration menu popup. You can save the current setup to a config file, load a saved config file, and enable auto-load on startup.</p>
+          </div>
+          <figure><img src="UI/Menu.png" alt="Settings menu" /><figcaption>Settings menu popup.</figcaption></figure>
+        </article>
+        <article class="item">
+          <div class="desc">
+            <h3>Settings / Quit Buttons</h3>
+            <p><code>Settings</code> opens configuration management. You can save the current setup to a config file, load a saved config file, and enable auto-load on startup. <code>Quit</code> closes the app safely.</p>
+          </div>
+          <figure><img src="UI/to-crop_0035_Buttons.png" alt="Bottom buttons" /><figcaption>Buttons row.</figcaption></figure>
+        </article>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <p class="section-desc">Common status-bar messages and what they mean.</p>
+        <article class="item">
+          <div class="desc">
+            <h3>Status Messages You May See</h3>
+            <ul>
+              <li><code>RUNNING - 24/25/29.97DF/30 FPS</code>: valid timecode is currently received.</li>
+              <li><code>STOPPED - no timecode</code>: input is active but no valid timecode is currently detected.</li>
+              <li><code>STOPPED - no MIDI input</code>: no MIDI input port is selected/available for MTC input.</li>
+              <li><code>STOPPED - invalid OSC port</code>: OSC port value is not a valid integer.</li>
+              <li><code>STOPPED - select LTC input</code>: LTC source selected but no LTC input device chosen.</li>
+              <li><code>STOPPED - LTC requires sounddevice+numpy</code>: LTC modules are missing.</li>
+              <li><code>STOPPED - ASIO driver failed to load (check x64 app + x64 ASIO/ReaRoute install)</code>: ASIO backend could not start.</li>
+              <li><code>STOPPED - &lt;error text&gt;</code>: runtime error returned by MIDI/LTC/OSC/Art-Net listeners.</li>
+            </ul>
+            <p>Tip: click the status bar to open the Status Details Window and inspect Input Timecode, FPS, output offsets, and processing latency.</p>
+          </div>
+          <figure><img src="UI/to-crop_0034_Status-_Ar.png" alt="Status bar troubleshooting" /><figcaption>Status bar is the first place to check when something does not work.</figcaption></figure>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

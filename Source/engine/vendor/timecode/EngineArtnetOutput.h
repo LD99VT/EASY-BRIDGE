@@ -115,6 +115,17 @@ public:
     bool getIsRunning() const { return isRunningFlag.load(std::memory_order_relaxed); }
     juce::String getBroadcastIp() const { return broadcastIp; }
     uint32_t getSendErrors() const { return sendErrors.load(std::memory_order_relaxed); }
+    void setTargets (const juce::StringArray& ips)
+    {
+        targetIps.clear();
+        for (const auto& ip : ips)
+        {
+            const auto t = ip.trim();
+            if (t.isNotEmpty() && ! targetIps.contains (t))
+                targetIps.add (t);
+        }
+    }
+    juce::StringArray getTargets() const { return targetIps; }
 
     //==============================================================================
     void setTimecode(const Timecode& tc)
@@ -229,9 +240,20 @@ private:
 
         packet[18] = (uint8_t)fpsToRateCode(fps);
 
-        int written = socket->write(broadcastIp, destPort, packet, sizeof(packet));
-        if (written < 0)
-            sendErrors.fetch_add(1, std::memory_order_relaxed);
+        if (targetIps.isEmpty())
+        {
+            int written = socket->write (broadcastIp, destPort, packet, sizeof(packet));
+            if (written < 0)
+                sendErrors.fetch_add (1, std::memory_order_relaxed);
+            return;
+        }
+
+        for (const auto& target : targetIps)
+        {
+            int written = socket->write (target, destPort, packet, sizeof(packet));
+            if (written < 0)
+                sendErrors.fetch_add (1, std::memory_order_relaxed);
+        }
     }
 
     void updateTimerRate()
@@ -244,6 +266,7 @@ private:
 
     std::unique_ptr<juce::DatagramSocket> socket;
     juce::String broadcastIp = "255.255.255.255";
+    juce::StringArray targetIps;
     juce::String bindIp = "0.0.0.0";
     int destPort = 6454;
     int selectedInterface = -1;

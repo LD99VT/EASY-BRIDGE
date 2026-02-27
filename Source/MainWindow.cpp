@@ -14,7 +14,7 @@ const auto kBg = juce::Colour::fromRGB (0x17, 0x17, 0x17);      // UI_BG
 const auto kRow = juce::Colour::fromRGB (0x3a, 0x3a, 0x3a);     // UI_BG_ROW
 const auto kSection = juce::Colour::fromRGB (0x65, 0x65, 0x65); // UI_BG_SEC
 const auto kInput = juce::Colour::fromRGB (0x24, 0x24, 0x24);   // UI_BG_INPUT
-const auto kHeader = juce::Colour::fromRGB (0x2f, 0x2f, 0x32);
+const auto kHeader = juce::Colour::fromRGB (0x3a, 0x3a, 0x3a);
 const auto kTeal = juce::Colour::fromRGB (0x3d, 0x80, 0x70);    // UI_TEAL
 const auto kTealOff = juce::Colour::fromRGB (0x48, 0x48, 0x48); // UI_TEAL_OFF
 constexpr int kPlaceholderItemId = 10000;
@@ -153,9 +153,21 @@ juce::File findBridgeBaseDirFromExe()
 
     for (auto r : roots)
     {
-        auto candidate = r.getChildFile ("MTC_Bridge");
-        if (candidate.exists())
-            return candidate;
+        if (r.getChildFile ("Fonts").isDirectory()
+            && r.getChildFile ("Help").isDirectory()
+            && r.getChildFile ("Icons").isDirectory())
+            return r;
+
+        const juce::StringArray names { "EASYBRIDGE-JUSE", "MTC_Bridge" };
+        for (const auto& name : names)
+        {
+            auto candidate = r.getChildFile (name);
+            if (candidate.isDirectory()
+                && candidate.getChildFile ("Fonts").isDirectory()
+                && candidate.getChildFile ("Help").isDirectory()
+                && candidate.getChildFile ("Icons").isDirectory())
+                return candidate;
+        }
     }
 
     return {};
@@ -334,41 +346,45 @@ private:
 
 MainContentComponent::MainContentComponent()
 {
+    setOpaque (true);
+
     loadFontsAndIcon();
     applyLookAndFeel();
 
-    titleEasyLabel_.setText ("EASY", juce::dontSendNotification);
+    for (int i = 0; i < (int) artIpExtraLbls_.size(); ++i)
+    {
+        artIpExtraLbls_[(size_t) i].setText ("Dest IP " + juce::String (i + 2) + ":", juce::dontSendNotification);
+        artnetDestRemoveButtons_[(size_t) i].setButtonText ("-");
+    }
+
+    titleEasyLabel_.setText ("EASY ", juce::dontSendNotification);
     titleEasyLabel_.setJustificationType (juce::Justification::centredLeft);
     titleEasyLabel_.setColour (juce::Label::textColourId, juce::Colours::white);
-    titleEasyLabel_.setFont ((titleEasyFont_.getHeight() > 0.0f ? titleEasyFont_ : juce::Font()).withHeight (34.0f));
+    titleEasyLabel_.setFont ((titleEasyFont_.getHeight() > 0.0f ? titleEasyFont_ : juce::Font()).withHeight (32.0f));
     addAndMakeVisible (titleEasyLabel_);
 
     titleBridgeLabel_.setText ("BRIDGE", juce::dontSendNotification);
     titleBridgeLabel_.setJustificationType (juce::Justification::centredLeft);
-    titleBridgeLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xa1, 0xa5, 0xac));
-    titleBridgeLabel_.setFont ((titleBridgeFont_.getHeight() > 0.0f ? titleBridgeFont_ : juce::Font()).withHeight (34.0f));
+    titleBridgeLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0x8a, 0x8a, 0x8a));
+    titleBridgeLabel_.setFont ((titleBridgeFont_.getHeight() > 0.0f ? titleBridgeFont_ : juce::Font()).withHeight (32.0f));
     addAndMakeVisible (titleBridgeLabel_);
 
     titleVersionLabel_.setText ("v" + juce::String (version::kAppVersion), juce::dontSendNotification);
-    titleVersionLabel_.setJustificationType (juce::Justification::centredRight);
-    titleVersionLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0x8b, 0x91, 0x9a));
+    titleVersionLabel_.setJustificationType (juce::Justification::centredLeft);
+    titleVersionLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0x9a, 0xa1, 0xac));
     titleVersionLabel_.setFont (juce::FontOptions (12.0f));
     addAndMakeVisible (titleVersionLabel_);
 
-    helpButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x50, 0x52, 0x56));
-    helpButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x50, 0x52, 0x56));
-    helpButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
-    helpButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
     helpButton_.onClick = [this] { openHelpPage(); };
     addAndMakeVisible (helpButton_);
 
     tcLabel_.setText ("00:00:00:00", juce::dontSendNotification);
     tcLabel_.setJustificationType (juce::Justification::centred);
-    tcLabel_.setColour (juce::Label::backgroundColourId, juce::Colour::fromRGB (20, 20, 20));
-    tcLabel_.setColour (juce::Label::outlineColourId, juce::Colour::fromRGB (48, 48, 48));
+    tcLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    tcLabel_.setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
     tcLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (220, 216, 203));
     if (monoFont_.getHeight() > 0.0f)
-        tcLabel_.setFont (monoFont_.withHeight (62.0f));
+        tcLabel_.setFont (monoFont_.withHeight (68.0f));
     addAndMakeVisible (tcLabel_);
 
     tcFpsLabel_.setText ("TC FPS: --", juce::dontSendNotification);
@@ -419,9 +435,10 @@ MainContentComponent::MainContentComponent()
     sourceHeaderLabel_.setBorderSize (juce::BorderSize<int> (0, 6, 0, 0));
     juce::Label* rowLabels[] = {
         &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
-        &mtcInLbl_, &artInLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
+        &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
         &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outOffsetLbl_, &outLevelLbl_,
-        &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_
+        &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_,
+        &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
     };
     for (auto* l : rowLabels)
     {
@@ -466,8 +483,13 @@ MainContentComponent::MainContentComponent()
     styleEditor (oscPortEditor_);
     styleEditor (oscAddrStrEditor_);
     styleEditor (oscAddrFloatEditor_);
-    styleEditor (artnetDestIpEditor_);
-    artnetDestIpEditor_.setText ("255.255.255.255");
+    styleEditor (artnetListenIpEditor_);
+    artnetListenIpEditor_.setText ("0.0.0.0");
+    for (auto& e : artnetDestIpEditors_)
+        styleEditor (e);
+    artnetDestIpEditors_[0].setText ("255.255.255.255");
+    for (int i = 1; i < (int) artnetDestIpEditors_.size(); ++i)
+        artnetDestIpEditors_[i].setText ("");
 
     oscFpsCombo_.addItem ("24", 1);
     oscFpsCombo_.addItem ("25", 2);
@@ -529,15 +551,55 @@ MainContentComponent::MainContentComponent()
         addAndMakeVisible (*c);
         c->onChange = [this] { onInputSettingsChanged(); };
     }
+    artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); };
+    for (auto& e : artnetDestIpEditors_)
+        e.onTextChange = [this] { onOutputSettingsChanged(); };
+    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
+    {
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+        artnetDestRemoveButtons_[i].onClick = [this, i]
+        {
+            const int idx = i + 1;
+            if (idx < artnetDestVisibleCount_)
+            {
+                artnetDestIpEditors_[idx].setText ("", juce::dontSendNotification);
+                for (int j = idx; j < artnetDestVisibleCount_ - 1; ++j)
+                    artnetDestIpEditors_[j].setText (artnetDestIpEditors_[j + 1].getText(), juce::dontSendNotification);
+                artnetDestIpEditors_[artnetDestVisibleCount_ - 1].setText ("", juce::dontSendNotification);
+                --artnetDestVisibleCount_;
+                updateArtnetIpControls();
+                updateWindowHeight();
+                resized();
+                onOutputSettingsChanged();
+            }
+        };
+        addAndMakeVisible (artnetDestRemoveButtons_[i]);
+    }
+    artnetAddIpButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+    artnetAddIpButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+    artnetAddIpButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+    artnetAddIpButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+    artnetAddIpButton_.onClick = [this]
+    {
+        if (artnetDestVisibleCount_ < (int) artnetDestIpEditors_.size())
+        {
+            ++artnetDestVisibleCount_;
+            updateArtnetIpControls();
+            updateWindowHeight();
+            resized();
+        }
+    };
+    addAndMakeVisible (artnetAddIpButton_);
     ltcInDriverCombo_.onChange = [this]
     {
         refreshLtcDeviceListsByDriver();
-        onInputSettingsChanged();
     };
     ltcOutDriverCombo_.onChange = [this]
     {
         refreshLtcDeviceListsByDriver();
-        onOutputSettingsChanged();
     };
     oscAdapterCombo_.onChange = [this]
     {
@@ -570,16 +632,25 @@ MainContentComponent::MainContentComponent()
     addAndMakeVisible (oscPortEditor_);
     addAndMakeVisible (oscAddrStrEditor_);
     addAndMakeVisible (oscAddrFloatEditor_);
-    addAndMakeVisible (artnetDestIpEditor_);
+    addAndMakeVisible (artnetListenIpEditor_);
+    for (auto& e : artnetDestIpEditors_)
+        addAndMakeVisible (e);
 
-    startAudioDeviceScan();
-    loadRuntimePrefs();
-    maybeAutoLoadConfig();
+    updateArtnetIpControls();
+
+    setSize (430, calcPreferredHeight());
+    resized();
     // Parent window may not be attached yet inside the component ctor.
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainContentComponent> (this)]
     {
         if (safe != nullptr)
+        {
+            // Defer runtime init so the first frame can paint immediately.
+            safe->startAudioDeviceScan();
+            safe->loadRuntimePrefs();
+            safe->maybeAutoLoadConfig();
             safe->updateWindowHeight();
+        }
     });
     startTimerHz (60);
 }
@@ -604,7 +675,7 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
 {
     int h = 16; // outer margins
     h += 40 + 4;  // title
-    h += 108;     // tc
+    h += 90;     // tc
     h += 24 + 4;  // tc fps
 
     auto addRows = [&h] (int count)
@@ -617,7 +688,7 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
     {
         if (sourceId == 1) addRows (6);
         else if (sourceId == 2) addRows (1);
-        else if (sourceId == 3) addRows (1);
+        else if (sourceId == 3) addRows (2);
         else if (sourceId == 4) addRows (6);
     }
 
@@ -626,7 +697,7 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
     addRows (1); // out MTC header
     if (outMtcExpanded) addRows (2);
     addRows (1); // out ArtNet header
-    if (outArtExpanded) addRows (3);
+    if (outArtExpanded) addRows (2 + artnetDestVisibleCount_);
 
     h += 24 + 4; // status
     h += 36 + 4; // settings/quit
@@ -638,6 +709,9 @@ void MainContentComponent::updateWindowHeight()
 {
     if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
     {
+        if (window->isMinimised())
+            return;
+
         auto* content = window->getContentComponent();
         const int chrome = content != nullptr ? (window->getHeight() - content->getHeight()) : 0;
 
@@ -649,6 +723,7 @@ void MainContentComponent::updateWindowHeight()
         const int maxTotal = expandedContent + chrome;
         const int targetTotal = juce::jlimit (minTotal, maxTotal, currentContent + chrome);
 
+        // Lock manual vertical resizing; height changes only via UI state updates.
         window->setResizeLimits (430, minTotal, 430, maxTotal);
         if (window->getHeight() != targetTotal)
             window->setSize (window->getWidth(), targetTotal);
@@ -709,7 +784,7 @@ void MainContentComponent::loadFontsAndIcon()
 
 void MainContentComponent::applyLookAndFeel()
 {
-    lookAndFeel_ = std::make_unique<juce::LookAndFeel_V4>();
+    lookAndFeel_ = std::make_unique<BridgeLookAndFeel>();
     lookAndFeel_->setColour (juce::ComboBox::backgroundColourId, kInput);
     lookAndFeel_->setColour (juce::ComboBox::textColourId, juce::Colour::fromRGB (210, 220, 230));
     lookAndFeel_->setColour (juce::ComboBox::outlineColourId, kRow);
@@ -745,6 +820,15 @@ void MainContentComponent::paint (juce::Graphics& g)
         g.drawRoundedRectangle (headerRect_.toFloat(), 5.0f, 1.0f);
     }
 
+    if (! tcLabel_.getBounds().isEmpty())
+    {
+        const auto tcRect = tcLabel_.getBounds().toFloat();
+        g.setColour (juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
+        g.fillRoundedRectangle (tcRect, 5.0f);
+        g.setColour (juce::Colour::fromRGB (0x33, 0x33, 0x33));
+        g.drawRoundedRectangle (tcRect, 5.0f, 1.0f);
+    }
+
     g.setColour (kSection);
     for (auto r : sectionRowRects_)
         g.fillRoundedRectangle (r.toFloat(), 5.0f);
@@ -778,21 +862,25 @@ void MainContentComponent::resized()
 
     auto a = getLocalBounds().reduced (8);
     headerRect_ = a.removeFromTop (40);
-    auto header = headerRect_.reduced (8, 0);
+    auto header = headerRect_.reduced (6, 0);
     auto help = header.removeFromRight (28);
-    helpButton_.setBounds (help.withSizeKeepingCentre (24, 24));
-    auto versionZone = header.removeFromRight (64);
-    titleVersionLabel_.setBounds (versionZone);
+    helpButton_.setBounds (help.withSizeKeepingCentre (28, 28));
 
     auto titleArea = header;
-    const int easyW = juce::jmax (46, titleEasyLabel_.getFont().getStringWidth ("EASY") + 6);
+    const int easyW = juce::jmax (46, titleEasyLabel_.getFont().getStringWidth ("EASY ") + 6);
     const int bridgeW = juce::jmax (74, titleBridgeLabel_.getFont().getStringWidth ("BRIDGE") + 6);
+    const int versionW = juce::jmax (58, titleVersionLabel_.getFont().getStringWidth (titleVersionLabel_.getText()) + 4);
     const int startX = titleArea.getX() + 2;
-    const int titleYOffset = 3;
-    titleEasyLabel_.setBounds (startX, titleArea.getY() + titleYOffset, easyW, titleArea.getHeight() - titleYOffset);
-    titleBridgeLabel_.setBounds (startX + easyW, titleArea.getY() + titleYOffset, bridgeW, titleArea.getHeight() - titleYOffset);
+    const int titleYOffset = 6;
+    const int titleH = juce::jmax (1, titleArea.getHeight() - titleYOffset);
+    const int easyX = startX;
+    const int bridgeX = easyX + easyW;
+    const int versionX = bridgeX + bridgeW + 2;
+    titleEasyLabel_.setBounds (easyX, titleArea.getY() + titleYOffset, easyW, titleH);
+    titleBridgeLabel_.setBounds (bridgeX, titleArea.getY() + titleYOffset, bridgeW, titleH);
+    titleVersionLabel_.setBounds (versionX, titleArea.getY() + titleYOffset, versionW, titleH);
     a.removeFromTop (4);
-    tcLabel_.setBounds (a.removeFromTop (108));
+    tcLabel_.setBounds (a.removeFromTop (90));
     tcFpsLabel_.setBounds (a.removeFromTop (24));
     a.removeFromTop (4);
 
@@ -827,9 +915,10 @@ void MainContentComponent::resized()
     {
         juce::Label* labels[] = {
             &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
-            &mtcInLbl_, &artInLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
+            &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
             &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outOffsetLbl_, &outLevelLbl_,
-            &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_
+            &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_,
+            &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
         };
         for (auto* l : labels)
             l->setVisible (false);
@@ -869,6 +958,7 @@ void MainContentComponent::resized()
     else if (sourceExpanded_ && src == 3)
     {
         fieldRow (artInLbl_, artnetInCombo_);
+        fieldRow (artInListenIpLbl_, artnetListenIpEditor_);
     }
     else if (sourceExpanded_)
     {
@@ -961,15 +1051,38 @@ void MainContentComponent::resized()
     if (outArtExpanded_)
     {
         fieldRow (artOutLbl_, artnetOutCombo_);
-        fieldRow (artIpLbl_, artnetDestIpEditor_);
+        auto destRow = row();
+        paramRowRects_.add (destRow);
+        auto labelArea = destRow.removeFromLeft (112);
+        artIpLbl_.setVisible (true);
+        artIpLbl_.setBounds (labelArea.reduced (10, 0));
+        auto controlArea = destRow.reduced (2, 3);
+        auto addArea = controlArea.removeFromRight (98);
+        artnetDestIpEditors_[0].setBounds (controlArea.reduced (0, 0));
+        artnetAddIpButton_.setBounds (addArea.reduced (2, 0));
+        artnetAddIpButton_.setVisible (true);
+
+        for (int i = 1; i < artnetDestVisibleCount_; ++i)
+        {
+            auto extraRow = row();
+            paramRowRects_.add (extraRow);
+            auto extraLabelArea = extraRow.removeFromLeft (112);
+            artIpExtraLbls_[(size_t) (i - 1)].setVisible (true);
+            artIpExtraLbls_[(size_t) (i - 1)].setBounds (extraLabelArea.reduced (10, 0));
+            auto extraControl = extraRow.reduced (2, 3);
+            auto removeArea = extraControl.removeFromRight (40);
+            artnetDestIpEditors_[(size_t) i].setBounds (extraControl);
+            artnetDestRemoveButtons_[(size_t) (i - 1)].setBounds (removeArea.reduced (2, 0));
+            artnetDestRemoveButtons_[(size_t) (i - 1)].setVisible (true);
+        }
         fieldRow (artOffsetLbl_, artnetOffsetEditor_);
     }
 
-    buttonRowRect_ = a.removeFromBottom (36);
+    buttonRowRect_ = a.removeFromBottom (40);
     auto buttons = buttonRowRect_.reduced (0, 0);
     settingsButton_.setBounds (buttons.removeFromLeft (buttons.getWidth() / 2).reduced (1, 0));
     quitButton_.setBounds (buttons.reduced (1, 0));
-    a.removeFromBottom (4);
+    a.removeFromBottom (4); // keep gap below status bar (above buttons)
     statusRect_ = a.removeFromBottom (24);
     statusButton_.setBounds (statusRect_.reduced (0, 0));
 
@@ -977,7 +1090,7 @@ void MainContentComponent::resized()
     {
         juce::Component* comps[] = {
             &ltcInDriverCombo_, &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_, &ltcInLevelBar_, &ltcInGainSlider_,
-            &mtcInCombo_, &artnetInCombo_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_
+            &mtcInCombo_, &artnetInCombo_, &artnetListenIpEditor_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_
         };
         for (auto* c : comps)
             if (c != nullptr)
@@ -986,7 +1099,7 @@ void MainContentComponent::resized()
     hideAll();
     if (src == 1) { ltcInDriverCombo_.setVisible (true); ltcInDeviceCombo_.setVisible (true); ltcInChannelCombo_.setVisible (true); ltcInSampleRateCombo_.setVisible (true); ltcInLevelBar_.setVisible (true); ltcInGainSlider_.setVisible (true); }
     if (src == 2) mtcInCombo_.setVisible (true);
-    if (src == 3) artnetInCombo_.setVisible (true);
+    if (src == 3) { artnetInCombo_.setVisible (true); artnetListenIpEditor_.setVisible (true); }
     if (src == 4) { oscAdapterCombo_.setVisible (true); oscIpEditor_.setVisible (true); oscPortEditor_.setVisible (true); oscFpsCombo_.setVisible (true); oscAddrStrEditor_.setVisible (true); oscAddrFloatEditor_.setVisible (true); }
     ltcInDriverCombo_.setVisible (sourceExpanded_ && src == 1);
     ltcInDeviceCombo_.setVisible (sourceExpanded_ && src == 1);
@@ -996,6 +1109,7 @@ void MainContentComponent::resized()
     ltcInGainSlider_.setVisible (sourceExpanded_ && src == 1);
     mtcInCombo_.setVisible (sourceExpanded_ && src == 2);
     artnetInCombo_.setVisible (sourceExpanded_ && src == 3);
+    artnetListenIpEditor_.setVisible (sourceExpanded_ && src == 3);
     oscAdapterCombo_.setVisible (sourceExpanded_ && src == 4);
     oscIpEditor_.setVisible (sourceExpanded_ && src == 4);
     oscPortEditor_.setVisible (sourceExpanded_ && src == 4);
@@ -1014,65 +1128,40 @@ void MainContentComponent::resized()
     mtcOffsetEditor_.setVisible (outMtcExpanded_);
 
     artnetOutCombo_.setVisible (outArtExpanded_);
-    artnetDestIpEditor_.setVisible (outArtExpanded_);
+    artnetAddIpButton_.setVisible (outArtExpanded_);
+    for (int i = 0; i < (int) artnetDestIpEditors_.size(); ++i)
+        artnetDestIpEditors_[(size_t) i].setVisible (outArtExpanded_ && i < artnetDestVisibleCount_);
+    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
+    {
+        artnetDestRemoveButtons_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
+        artIpExtraLbls_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
+    }
     artnetOffsetEditor_.setVisible (outArtExpanded_);
 }
 
 void MainContentComponent::restartSelectedSource()
 {
-    bridgeEngine_.stopLtcInput();
-    bridgeEngine_.stopMtcInput();
-    bridgeEngine_.stopArtnetInput();
-    bridgeEngine_.stopOscInput();
-
-    juce::String err;
     const int src = sourceCombo_.getSelectedId();
     if (src == 1)
-    {
         bridgeEngine_.setInputSource (engine::InputSource::LTC);
-        const int selectedId = ltcInDeviceCombo_.getSelectedId();
-        const int idx = selectedId > 0 ? selectedId - 1 : -1;
-        if (juce::isPositiveAndBelow (idx, filteredInputIndices_.size()))
-            bridgeEngine_.startLtcInput (inputChoices_[filteredInputIndices_[idx]],
-                                         comboChannelIndex (ltcInChannelCombo_),
-                                         comboSampleRate (ltcInSampleRateCombo_),
-                                         0,
-                                         err);
-    }
     else if (src == 2)
-    {
         bridgeEngine_.setInputSource (engine::InputSource::MTC);
-        bridgeEngine_.startMtcInput (mtcInCombo_.getSelectedItemIndex(), err);
-    }
     else if (src == 3)
-    {
         bridgeEngine_.setInputSource (engine::InputSource::ArtNet);
-        bridgeEngine_.startArtnetInput (artnetInCombo_.getSelectedItemIndex(), err);
-    }
     else
-    {
         bridgeEngine_.setInputSource (engine::InputSource::OSC);
-        FrameRate fps = FrameRate::FPS_25;
-        if (oscFpsCombo_.getSelectedId() == 1) fps = FrameRate::FPS_24;
-        if (oscFpsCombo_.getSelectedId() == 3) fps = FrameRate::FPS_2997;
-        if (oscFpsCombo_.getSelectedId() == 4) fps = FrameRate::FPS_30;
-        const auto bindIp = (oscIpEditor_.getText().trim().isNotEmpty() ? oscIpEditor_.getText().trim() : parseBindIpFromAdapterLabel (oscAdapterCombo_.getText()));
-        bridgeEngine_.startOscInput (juce::jlimit (1, 65535, oscPortEditor_.getText().getIntValue()), bindIp, fps, oscAddrStrEditor_.getText(), oscAddrFloatEditor_.getText(), err);
-    }
-
-    if (err.isNotEmpty())
-        setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
 }
 
 void MainContentComponent::onOutputToggleChanged()
 {
-    onOutputSettingsChanged();
+    bridgeEngine_.setLtcOutputEnabled (ltcOutSwitch_.getState());
+    bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
+    bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
 }
 
 void MainContentComponent::onOutputSettingsChanged()
 {
     juce::String err;
-    if (ltcOutSwitch_.getState())
     {
         const int selectedId = ltcOutDeviceCombo_.getSelectedId();
         const int idx = selectedId > 0 ? selectedId - 1 : -1;
@@ -1082,28 +1171,19 @@ void MainContentComponent::onOutputSettingsChanged()
                                           comboSampleRate (ltcOutSampleRateCombo_),
                                           0,
                                           err);
-        bridgeEngine_.setLtcOutputEnabled (true);
-    }
-    else
-    {
-        bridgeEngine_.setLtcOutputEnabled (false);
     }
 
-    if (mtcOutSwitch_.getState())
-    {
+    if (mtcOutCombo_.getNumItems() > 0)
         bridgeEngine_.startMtcOutput (mtcOutCombo_.getSelectedItemIndex(), err);
-        bridgeEngine_.setMtcOutputEnabled (true);
-    }
-    else
-        bridgeEngine_.setMtcOutputEnabled (false);
 
-    if (artnetOutSwitch_.getState())
-    {
-        bridgeEngine_.startArtnetOutput (artnetOutCombo_.getSelectedItemIndex(), err);
-        bridgeEngine_.setArtnetOutputEnabled (true);
-    }
-    else
-        bridgeEngine_.setArtnetOutputEnabled (false);
+    if (artnetOutCombo_.getNumItems() > 0)
+        bridgeEngine_.startArtnetOutput (artnetOutCombo_.getSelectedItemIndex(),
+                                         collectArtnetTargets(),
+                                         err);
+
+    bridgeEngine_.setLtcOutputEnabled (ltcOutSwitch_.getState());
+    bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
+    bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
 
     if (err.isNotEmpty())
         setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
@@ -1111,7 +1191,44 @@ void MainContentComponent::onOutputSettingsChanged()
 
 void MainContentComponent::onInputSettingsChanged()
 {
+    juce::String err;
+
+    const int ltcSelectedId = ltcInDeviceCombo_.getSelectedId();
+    const int ltcIdx = ltcSelectedId > 0 ? ltcSelectedId - 1 : -1;
+    if (juce::isPositiveAndBelow (ltcIdx, filteredInputIndices_.size()))
+        bridgeEngine_.startLtcInput (inputChoices_[filteredInputIndices_[ltcIdx]],
+                                     comboChannelIndex (ltcInChannelCombo_),
+                                     comboSampleRate (ltcInSampleRateCombo_),
+                                     0,
+                                     err);
+
+    if (mtcInCombo_.getNumItems() > 0)
+        bridgeEngine_.startMtcInput (mtcInCombo_.getSelectedItemIndex(), err);
+
+    if (artnetInCombo_.getNumItems() > 0)
+    {
+        const auto artnetListenIp = artnetListenIpEditor_.getText().trim();
+        bridgeEngine_.startArtnetInput (artnetInCombo_.getSelectedItemIndex(),
+                                        (artnetListenIp == "0.0.0.0" ? juce::String() : artnetListenIp),
+                                        err);
+    }
+
+    FrameRate fps = FrameRate::FPS_25;
+    if (oscFpsCombo_.getSelectedId() == 1) fps = FrameRate::FPS_24;
+    if (oscFpsCombo_.getSelectedId() == 3) fps = FrameRate::FPS_2997;
+    if (oscFpsCombo_.getSelectedId() == 4) fps = FrameRate::FPS_30;
+    const auto bindIp = (oscIpEditor_.getText().trim().isNotEmpty() ? oscIpEditor_.getText().trim() : parseBindIpFromAdapterLabel (oscAdapterCombo_.getText()));
+    bridgeEngine_.startOscInput (juce::jlimit (1, 65535, oscPortEditor_.getText().getIntValue()),
+                                 bindIp,
+                                 fps,
+                                 oscAddrStrEditor_.getText(),
+                                 oscAddrFloatEditor_.getText(),
+                                 err);
+
     restartSelectedSource();
+
+    if (err.isNotEmpty())
+        setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
 }
 
 void MainContentComponent::timerCallback()
@@ -1189,7 +1306,7 @@ void MainContentComponent::onAudioScanComplete (const juce::Array<engine::AudioC
     refreshLtcDeviceListsByDriver();
     refreshNetworkMidiLists();
 
-    restartSelectedSource();
+    onInputSettingsChanged();
     onOutputSettingsChanged();
 }
 
@@ -1355,7 +1472,10 @@ void MainContentComponent::styleEditor (juce::TextEditor& e)
 {
     e.setColour (juce::TextEditor::backgroundColourId, kInput);
     e.setColour (juce::TextEditor::outlineColourId, kRow);
+    e.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour::fromRGB (0x56, 0x5f, 0x6b));
     e.setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (0xc0, 0xc0, 0xc0));
+    e.setJustification (juce::Justification::centredLeft);
+    e.setIndents (8, 2);
 }
 
 void MainContentComponent::styleSlider (juce::Slider& s, bool dbStyle)
@@ -1379,6 +1499,26 @@ void MainContentComponent::syncOscIpWithAdapter()
     oscIpEditor_.setReadOnly (lockIp);
 }
 
+void MainContentComponent::updateArtnetIpControls()
+{
+    artnetDestVisibleCount_ = juce::jlimit (1, (int) artnetDestIpEditors_.size(), artnetDestVisibleCount_);
+    artnetAddIpButton_.setEnabled (artnetDestVisibleCount_ < (int) artnetDestIpEditors_.size());
+}
+
+juce::StringArray MainContentComponent::collectArtnetTargets() const
+{
+    juce::StringArray out;
+    for (int i = 0; i < artnetDestVisibleCount_ && i < (int) artnetDestIpEditors_.size(); ++i)
+    {
+        const auto ip = artnetDestIpEditors_[(size_t) i].getText().trim();
+        if (ip.isNotEmpty() && ! out.contains (ip))
+            out.add (ip);
+    }
+    if (out.isEmpty())
+        out.add ("255.255.255.255");
+    return out;
+}
+
 juce::File MainContentComponent::findBridgeBaseDir() const
 {
     auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
@@ -1395,9 +1535,21 @@ juce::File MainContentComponent::findBridgeBaseDir() const
 
     for (auto r : roots)
     {
-        auto candidate = r.getChildFile ("MTC_Bridge");
-        if (candidate.exists())
-            return candidate;
+        if (r.getChildFile ("Fonts").isDirectory()
+            && r.getChildFile ("Help").isDirectory()
+            && r.getChildFile ("Icons").isDirectory())
+            return r;
+
+        const juce::StringArray names { "EASYBRIDGE-JUSE", "MTC_Bridge" };
+        for (const auto& name : names)
+        {
+            auto candidate = r.getChildFile (name);
+            if (candidate.isDirectory()
+                && candidate.getChildFile ("Fonts").isDirectory()
+                && candidate.getChildFile ("Help").isDirectory()
+                && candidate.getChildFile ("Icons").isDirectory())
+                return candidate;
+        }
     }
 
     return {};
@@ -1484,13 +1636,19 @@ void MainContentComponent::saveConfigToFile (const juce::File& cfgFile)
     obj->setProperty ("mtc_out", mtcOutCombo_.getText());
     obj->setProperty ("artnet_in", artnetInCombo_.getText());
     obj->setProperty ("artnet_out", artnetOutCombo_.getText());
+    obj->setProperty ("artnet_listen_ip", artnetListenIpEditor_.getText());
     obj->setProperty ("osc_adapter", oscAdapterCombo_.getText());
     obj->setProperty ("osc_ip", oscIpEditor_.getText());
     obj->setProperty ("osc_port", oscPortEditor_.getText());
     obj->setProperty ("osc_fps", oscFpsCombo_.getText());
     obj->setProperty ("osc_str", oscAddrStrEditor_.getText());
     obj->setProperty ("osc_float", oscAddrFloatEditor_.getText());
-    obj->setProperty ("artnet_dest", artnetDestIpEditor_.getText());
+    juce::Array<juce::var> artnetTargetsVar;
+    const auto artnetTargets = collectArtnetTargets();
+    for (const auto& ip : artnetTargets)
+        artnetTargetsVar.add (ip);
+    obj->setProperty ("artnet_targets", juce::var (artnetTargetsVar));
+    obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0]);
     obj->setProperty ("ltc_offset", ltcOffsetEditor_.getText());
     obj->setProperty ("mtc_offset", mtcOffsetEditor_.getText());
     obj->setProperty ("artnet_offset", artnetOffsetEditor_.getText());
@@ -1560,11 +1718,29 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     setComboText (oscAdapterCombo_, propOr ("osc_adapter", oscAdapterCombo_.getText()).toString());
     setComboText (oscFpsCombo_, propOr ("osc_fps", oscFpsCombo_.getText()).toString());
 
+    artnetListenIpEditor_.setText (propOr ("artnet_listen_ip", artnetListenIpEditor_.getText()).toString(), juce::dontSendNotification);
     oscIpEditor_.setText (propOr ("osc_ip", oscIpEditor_.getText()).toString(), juce::dontSendNotification);
     oscPortEditor_.setText (propOr ("osc_port", oscPortEditor_.getText()).toString(), juce::dontSendNotification);
     oscAddrStrEditor_.setText (propOr ("osc_str", oscAddrStrEditor_.getText()).toString(), juce::dontSendNotification);
     oscAddrFloatEditor_.setText (propOr ("osc_float", oscAddrFloatEditor_.getText()).toString(), juce::dontSendNotification);
-    artnetDestIpEditor_.setText (propOr ("artnet_dest", artnetDestIpEditor_.getText()).toString(), juce::dontSendNotification);
+    for (auto& e : artnetDestIpEditors_)
+        e.setText ("", juce::dontSendNotification);
+    artnetDestVisibleCount_ = 1;
+    auto artnetTargets = propOr ("artnet_targets", juce::var());
+    if (auto* arr = artnetTargets.getArray())
+    {
+        int idx = 0;
+        for (const auto& v : *arr)
+        {
+            const auto ip = v.toString().trim();
+            if (ip.isNotEmpty() && idx < (int) artnetDestIpEditors_.size())
+                artnetDestIpEditors_[(size_t) idx++].setText (ip, juce::dontSendNotification);
+        }
+        artnetDestVisibleCount_ = juce::jmax (1, juce::jmin ((int) artnetDestIpEditors_.size(), idx));
+    }
+    if (artnetDestIpEditors_[0].getText().trim().isEmpty())
+        artnetDestIpEditors_[0].setText (propOr ("artnet_dest", juce::String ("255.255.255.255")).toString(), juce::dontSendNotification);
+    updateArtnetIpControls();
     ltcOffsetEditor_.setText (propOr ("ltc_offset", ltcOffsetEditor_.getText()).toString(), juce::dontSendNotification);
     mtcOffsetEditor_.setText (propOr ("mtc_offset", mtcOffsetEditor_.getText()).toString(), juce::dontSendNotification);
     artnetOffsetEditor_.setText (propOr ("artnet_offset", artnetOffsetEditor_.getText()).toString(), juce::dontSendNotification);
@@ -1574,7 +1750,7 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     outMtcExpandBtn_.setExpanded (outMtcExpanded_);
     outArtExpandBtn_.setExpanded (outArtExpanded_);
 
-    restartSelectedSource();
+    onInputSettingsChanged();
     onOutputSettingsChanged();
     updateWindowHeight();
     resized();
@@ -1655,10 +1831,16 @@ void MainContentComponent::resetToDefaults()
     artnetOffsetEditor_.setText ("0", juce::dontSendNotification);
     oscPortEditor_.setText ("9000", juce::dontSendNotification);
     oscIpEditor_.setText ("0.0.0.0", juce::dontSendNotification);
+    artnetListenIpEditor_.setText ("0.0.0.0", juce::dontSendNotification);
     oscAddrStrEditor_.setText ("/frames/str", juce::dontSendNotification);
     oscAddrFloatEditor_.setText ("/time", juce::dontSendNotification);
+    for (auto& e : artnetDestIpEditors_)
+        e.setText ("", juce::dontSendNotification);
+    artnetDestIpEditors_[0].setText ("255.255.255.255", juce::dontSendNotification);
+    artnetDestVisibleCount_ = 1;
+    updateArtnetIpControls();
 
-    restartSelectedSource();
+    onInputSettingsChanged();
     onOutputSettingsChanged();
     updateWindowHeight();
     resized();
@@ -1726,6 +1908,7 @@ MainWindow::MainWindow()
                             juce::Colours::black,
                             juce::DocumentWindow::minimiseButton | juce::DocumentWindow::closeButton)
 {
+    setColour (juce::ResizableWindow::backgroundColourId, juce::Colour::fromRGB (0x11, 0x12, 0x16));
     setUsingNativeTitleBar (true);
     setResizable (false, false);
     setResizeLimits (430, 420, 430, 1600);

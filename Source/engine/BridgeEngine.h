@@ -56,7 +56,7 @@ public:
     void stopLtcInput();
     bool startMtcInput (int deviceIndex, juce::String& errorOut);
     void stopMtcInput();
-    bool startArtnetInput (int interfaceIndex, juce::String& errorOut);
+    bool startArtnetInput (int interfaceIndex, const juce::String& bindIp, juce::String& errorOut);
     void stopArtnetInput();
     bool startOscInput (int port, const juce::String& bindIp, FrameRate fps, const juce::String& addrStr, const juce::String& addrFloat, juce::String& errorOut);
     void stopOscInput();
@@ -65,7 +65,7 @@ public:
     void stopLtcOutput();
     bool startMtcOutput (int deviceIndex, juce::String& errorOut);
     void stopMtcOutput();
-    bool startArtnetOutput (int interfaceIndex, juce::String& errorOut);
+    bool startArtnetOutput (int interfaceIndex, const juce::StringArray& targetIps, juce::String& errorOut);
     void stopArtnetOutput();
     void setLtcOutputEnabled (bool enabled);
     void setMtcOutputEnabled (bool enabled);
@@ -93,6 +93,16 @@ private:
     juce::String ltcInType_;
     juce::String ltcInDevice_;
     int ltcInChannel_ { -1 };
+    double ltcInSampleRate_ { 0.0 };
+    int ltcInBufferSize_ { 0 };
+    int mtcInDeviceIndex_ { -1 };
+    int artnetInInterfaceIndex_ { -1 };
+    juce::String artnetInBindIp_ { "0.0.0.0" };
+    int oscInPort_ { 0 };
+    juce::String oscInBindIp_;
+    juce::String oscInAddrStr_;
+    juce::String oscInAddrFloat_;
+    FrameRate oscInFps_ { FrameRate::FPS_25 };
 
     LtcInput ltcInput_;
     MtcInput mtcInput_;
@@ -115,5 +125,6 @@ private:
     int ltcOutBufferSize_ { 0 };
     int mtcOutDeviceIndex_ { -1 };
     int artnetOutInterfaceIndex_ { -1 };
+    juce::StringArray artnetOutTargets_;
 };
 } // namespace bridge::engine
