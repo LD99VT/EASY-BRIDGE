@@ -287,9 +287,10 @@ public:
         juce::Array<engine::AudioChoice> outputs;
 
         juce::AudioDeviceManager tempMgr;
-        tempMgr.initialise (128, 128, nullptr, false);
+        juce::OwnedArray<juce::AudioIODeviceType> types;
+        tempMgr.createAudioDeviceTypes (types);
 
-        for (auto* type : tempMgr.getAvailableDeviceTypes())
+        for (auto* type : types)
         {
             if (threadShouldExit())
                 return;
