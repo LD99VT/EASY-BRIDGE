@@ -1,4 +1,6 @@
 build/
+# Auto-generated from BridgeVersion.h.in — edit the VERSION in CMakeLists.txt
+Source/core/BridgeVersion.h
 .vscode/
 .idea/
 *.user

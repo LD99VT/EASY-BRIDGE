@@ -1,25 +1,18 @@
 #include "MainWindow.h"
 #include "core/BridgeVersion.h"
+#include "platform/WindowUtils.h"
+#include "ui/StatusMonitorWindow.h"
 #include <cmath>
-
-#if JUCE_WINDOWS
-#include <windows.h>
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi.lib")
-#endif
+// BUG-3 fix: dwmapi loaded dynamically in platform/WindowUtils.cpp — no static link here
 
 namespace bridge
 {
 namespace
 {
-const auto kBg = juce::Colour::fromRGB (0x17, 0x17, 0x17);      // UI_BG
-const auto kRow = juce::Colour::fromRGB (0x3a, 0x3a, 0x3a);     // UI_BG_ROW
-const auto kSection = juce::Colour::fromRGB (0x65, 0x65, 0x65); // UI_BG_SEC
-const auto kInput = juce::Colour::fromRGB (0x24, 0x24, 0x24);   // UI_BG_INPUT
-const auto kHeader = juce::Colour::fromRGB (0x3a, 0x3a, 0x3a);
-const auto kTeal = juce::Colour::fromRGB (0x3d, 0x80, 0x70);    // UI_TEAL
-const auto kTealOff = juce::Colour::fromRGB (0x48, 0x48, 0x48); // UI_TEAL_OFF
-constexpr int kPlaceholderItemId = 10000;
+// BUG-7 fix: named constant instead of magic literal 256
+constexpr int kLtcOutputBufferSize = 256;
+constexpr int kPlaceholderItemId   = 10000;
+// Colours live in BridgeColours.h (included via MainWindow.h)
 
 juce::String parseBindIpFromAdapterLabel (juce::String text)
 {
@@ -138,226 +131,22 @@ float dbToLinearGain (double db)
 {
     return (float) std::pow (10.0, db / 20.0);
 }
+// findBridgeBaseDirFromExe, loadBridgeAppIcon, applyNativeDarkTitleBar
+// → moved to platform/WindowUtils.cpp (BUG-1, BUG-3 fix)
+// StatusMonitorWindow → moved to ui/StatusMonitorWindow.h (BUG-10 fix)
 
-juce::File findBridgeBaseDirFromExe()
-{
-    auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
-    juce::Array<juce::File> roots;
-    roots.add (exeDir);
-    roots.add (juce::File::getCurrentWorkingDirectory());
+// ─── Fake block to keep compiler happy: remove the old StatusMonitorWindow ──
+// (nothing to declare here — it's now a standalone class in StatusMonitorWindow.h)
 
-    auto p = exeDir;
-    for (int i = 0; i < 8 && p.exists(); ++i)
-    {
-        roots.addIfNotAlreadyThere (p);
-        p = p.getParentDirectory();
-    }
+// Temporary placeholder so the removal of the original StatusMonitorWindow
+// constructor body below compiles cleanly.
+// The block originally started here; we patch up to the first non-StatusMonitorWindow
+// class (BridgeTrayIcon) below.
 
-    for (auto r : roots)
-    {
-        if (r.getChildFile ("Fonts").isDirectory()
-            && r.getChildFile ("Help").isDirectory()
-            && r.getChildFile ("Icons").isDirectory())
-            return r;
+// Placeholder: original StatusMonitorWindow init block that called applyNativeDarkTitleBar
+// is gone; the real StatusMonitorWindow ctor is in ui/StatusMonitorWindow.h.
 
-        const juce::StringArray names { "EASYBRIDGE-JUSE", "MTC_Bridge" };
-        for (const auto& name : names)
-        {
-            auto candidate = r.getChildFile (name);
-            if (candidate.isDirectory()
-                && candidate.getChildFile ("Fonts").isDirectory()
-                && candidate.getChildFile ("Help").isDirectory()
-                && candidate.getChildFile ("Icons").isDirectory())
-                return candidate;
-        }
-    }
-
-    return {};
-}
-
-juce::Image loadBridgeAppIcon()
-{
-    auto base = findBridgeBaseDirFromExe();
-    if (! base.exists())
-        return {};
-
-    auto iconFile = base.getChildFile ("Icons/App_Icon.png");
-    if (! iconFile.existsAsFile())
-        return {};
-
-    auto in = std::unique_ptr<juce::FileInputStream> (iconFile.createInputStream());
-    if (in == nullptr)
-        return {};
-
-    return juce::ImageFileFormat::loadFrom (*in);
-}
-
-#if JUCE_WINDOWS
-void applyNativeDarkTitleBar (juce::DocumentWindow& window)
-{
-    auto* peer = window.getPeer();
-    if (peer == nullptr)
-        return;
-
-    auto* hwnd = static_cast<HWND> (peer->getNativeHandle());
-    if (hwnd == nullptr)
-        return;
-
-    auto* dwm = ::LoadLibraryW (L"dwmapi.dll");
-    if (dwm == nullptr)
-        return;
-
-    using DwmSetWindowAttributeFn = HRESULT (WINAPI*) (HWND, DWORD, LPCVOID, DWORD);
-    auto setAttr = reinterpret_cast<DwmSetWindowAttributeFn> (::GetProcAddress (dwm, "DwmSetWindowAttribute"));
-    if (setAttr != nullptr)
-    {
-        const BOOL enabled = TRUE;
-        constexpr DWORD DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        constexpr DWORD DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19;
-        setAttr (hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &enabled, sizeof (enabled));
-        setAttr (hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, &enabled, sizeof (enabled));
-    }
-
-    ::FreeLibrary (dwm);
-}
-#endif
-
-// ─── Live Bridge Status Monitor window (same style as EASYTRIGGER-JYCE) ─────
-class StatusMonitorWindow final : public juce::DocumentWindow,
-                                  private juce::Timer
-{
-public:
-    using Getter = std::function<void (juce::Array<juce::String>&, juce::Array<juce::String>&)>;
-
-    StatusMonitorWindow (Getter getter, juce::Component* relativeTo)
-        : juce::DocumentWindow ("Bridge Status Monitor",
-                                juce::Colour::fromRGB (0x1e, 0x1e, 0x1e),
-                                juce::DocumentWindow::closeButton),
-          getter_ (std::move (getter))
-    {
-        setUsingNativeTitleBar (true);
-        setResizable (false, false);
-        setContentOwned (new Content (*this), true);
-        centreWithSize (420, 390);
-        if (relativeTo != nullptr)
-        {
-            const auto rc = relativeTo->getScreenBounds();
-            setBounds (rc.getCentreX() - 210, rc.getCentreY() - 195, 420, 390);
-        }
-        setVisible (true);
-#if JUCE_WINDOWS
-        applyNativeDarkTitleBar (*this);
-        if (auto* hwnd = (HWND) getWindowHandle())
-        {
-            ::SendMessageW (hwnd, WM_SETICON, 0, 0);
-            ::SendMessageW (hwnd, WM_SETICON, 1, 0);
-            constexpr long kGwlStyle = -16;
-            long st = (long) ::GetWindowLongPtrW (hwnd, kGwlStyle);
-            st &= ~(long) 0x00040000L;  // WS_THICKFRAME
-            st &= ~(long) 0x00010000L;  // WS_MAXIMIZEBOX
-            ::SetWindowLongPtrW (hwnd, kGwlStyle, st);
-            ::SetWindowPos (hwnd, nullptr, 0, 0, 0, 0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-        }
-#endif
-        toFront (true);
-        startTimerHz (5);
-    }
-
-    void closeButtonPressed() override { delete this; }
-
-    void timerCallback() override
-    {
-        if (auto* c = dynamic_cast<Content*> (getContentComponent()))
-            c->refresh();
-    }
-
-    void getValues (juce::Array<juce::String>& keys, juce::Array<juce::String>& vals)
-    {
-        getter_ (keys, vals);
-    }
-
-private:
-    Getter getter_;
-
-    static constexpr int kRows = 10;
-
-    struct Content final : juce::Component
-    {
-        StatusMonitorWindow& win_;
-
-        juce::Label keyLbls_[kRows];
-        juce::Label valLbls_[kRows];
-        juce::TextButton ok_ { "OK" };
-
-        explicit Content (StatusMonitorWindow& w) : win_ (w)
-        {
-            const juce::Colour keyCol = juce::Colour::fromRGB (0x7a, 0x7a, 0x86);
-            const juce::Colour valCol = juce::Colour::fromRGB (0xe0, 0xe0, 0xe0);
-
-            for (int i = 0; i < kRows; ++i)
-            {
-                keyLbls_[i].setFont (juce::FontOptions (12.5f).withStyle ("Bold"));
-                keyLbls_[i].setColour (juce::Label::textColourId, keyCol);
-                keyLbls_[i].setJustificationType (juce::Justification::centredRight);
-                addAndMakeVisible (keyLbls_[i]);
-
-                valLbls_[i].setFont (juce::FontOptions (12.5f));
-                valLbls_[i].setColour (juce::Label::textColourId, valCol);
-                valLbls_[i].setJustificationType (juce::Justification::centredLeft);
-                addAndMakeVisible (valLbls_[i]);
-            }
-
-            ok_.setColour (juce::TextButton::buttonColourId,   juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-            ok_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-            ok_.setColour (juce::TextButton::textColourOffId,  juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
-            ok_.setColour (juce::TextButton::textColourOnId,   juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
-            ok_.onClick = [this]
-            {
-                juce::MessageManager::callAsync ([w = &win_] { delete w; });
-            };
-            addAndMakeVisible (ok_);
-
-            refresh();
-        }
-
-        void paint (juce::Graphics& g) override
-        {
-            g.fillAll (juce::Colour::fromRGB (0x17, 0x17, 0x17));
-        }
-
-        void resized() override
-        {
-            constexpr int kRowH = 30;
-            constexpr int kPad  = 14;
-            constexpr int kKeyW = 120;
-            constexpr int kGap  = 10;
-            const int valW = getWidth() - kPad * 2 - kKeyW - kGap;
-
-            for (int i = 0; i < kRows; ++i)
-            {
-                const int y = kPad + i * kRowH;
-                keyLbls_[i].setBounds (kPad, y, kKeyW, kRowH);
-                valLbls_[i].setBounds (kPad + kKeyW + kGap, y, valW, kRowH);
-            }
-
-            const int btnY = kPad + kRows * kRowH + kPad;
-            ok_.setBounds ((getWidth() - 100) / 2, btnY, 100, 32);
-        }
-
-        void refresh()
-        {
-            juce::Array<juce::String> keys, vals;
-            win_.getValues (keys, vals);
-            for (int i = 0; i < juce::jmin (kRows, keys.size()); ++i)
-            {
-                keyLbls_[i].setText (keys[i], juce::dontSendNotification);
-                valLbls_[i].setText (vals[i], juce::dontSendNotification);
-            }
-        }
-    };
-};
-
+// ─── Tray icon (stays here — circular dep with MainWindow) ───────────────────
 class BridgeTrayIcon final : public juce::SystemTrayIconComponent
 {
 public:
@@ -796,6 +585,9 @@ MainContentComponent::MainContentComponent()
 
 MainContentComponent::~MainContentComponent()
 {
+    // Must be cleared before the LookAndFeel instance is destroyed.
+    juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
+    setLookAndFeel (nullptr);
     {
         const std::lock_guard<std::mutex> lock (ltcOutputApplyMutex_);
         ltcOutputApplyExit_ = true;
@@ -880,28 +672,9 @@ void MainContentComponent::updateWindowHeight()
 
 void MainContentComponent::loadFontsAndIcon()
 {
-    auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
-    juce::Array<juce::File> roots;
-    roots.add (exeDir);
-    roots.add (juce::File::getCurrentWorkingDirectory());
-
-    auto p = exeDir;
-    for (int i = 0; i < 8 && p.exists(); ++i)
-    {
-        roots.addIfNotAlreadyThere (p);
-        p = p.getParentDirectory();
-    }
-
-    juce::File base;
-    for (auto r : roots)
-    {
-        auto candidate = r.getChildFile ("MTC_Bridge");
-        if (candidate.exists())
-        {
-            base = candidate;
-            break;
-        }
-    }
+    // BUG-1 fix: use platform::findBridgeBaseDir() which searches for both
+    // "EASYBRIDGE-JUSE" and "MTC_Bridge" — old code only searched "MTC_Bridge".
+    const auto base = platform::findBridgeBaseDir();
     if (! base.exists())
         return;
 
@@ -954,6 +727,10 @@ void MainContentComponent::applyLookAndFeel()
     lookAndFeel_->setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (210, 220, 230));
     lookAndFeel_->setColour (juce::TextEditor::outlineColourId, kRow);
     setLookAndFeel (lookAndFeel_.get());
+    // Set as application-wide default so that PopupMenus (which create their own
+    // top-level windows) also inherit the dark theme instead of falling back to
+    // the system default LookAndFeel.
+    juce::LookAndFeel::setDefaultLookAndFeel (lookAndFeel_.get());
 }
 
 void MainContentComponent::paint (juce::Graphics& g)
@@ -1234,6 +1011,8 @@ void MainContentComponent::resized()
     statusRect_ = a.removeFromBottom (24);
     statusButton_.setBounds (statusRect_.reduced (0, 0));
 
+    // BUG-6 fix: removed the redundant setVisible block here that was immediately
+    // overridden by the sourceExpanded_ && src == N block that follows.
     auto hideAll = [this]
     {
         juce::Component* comps[] = {
@@ -1245,10 +1024,6 @@ void MainContentComponent::resized()
                 c->setVisible (false);
     };
     hideAll();
-    if (src == 1) { ltcInDriverCombo_.setVisible (true); ltcInDeviceCombo_.setVisible (true); ltcInChannelCombo_.setVisible (true); ltcInSampleRateCombo_.setVisible (true); ltcInLevelBar_.setVisible (true); ltcInGainSlider_.setVisible (true); }
-    if (src == 2) mtcInCombo_.setVisible (true);
-    if (src == 3) { artnetInCombo_.setVisible (true); artnetListenIpEditor_.setVisible (true); }
-    if (src == 4) { oscAdapterCombo_.setVisible (true); oscIpEditor_.setVisible (true); oscPortEditor_.setVisible (true); oscFpsCombo_.setVisible (true); oscAddrStrEditor_.setVisible (true); oscAddrFloatEditor_.setVisible (true); }
     ltcInDriverCombo_.setVisible (sourceExpanded_ && src == 1);
     ltcInDeviceCombo_.setVisible (sourceExpanded_ && src == 1);
     ltcInChannelCombo_.setVisible (sourceExpanded_ && src == 1);
@@ -1318,7 +1093,7 @@ void MainContentComponent::queueLtcOutputApply()
         pendingLtcOutputChoice_ = outputChoices_[filteredOutputIndices_[idx]];
         pendingLtcOutputChannel_ = comboChannelIndex (ltcOutChannelCombo_);
         pendingLtcOutputSampleRate_ = comboSampleRate (ltcOutSampleRateCombo_);
-        pendingLtcOutputBufferSize_ = 256;
+        pendingLtcOutputBufferSize_ = kLtcOutputBufferSize; // BUG-7 fix: named constant
         pendingLtcOutputEnabled_ = enabled;
         ltcOutputApplyPending_ = true;
     }
@@ -1403,7 +1178,10 @@ void MainContentComponent::onOutputSettingsChanged()
 
 void MainContentComponent::onInputSettingsChanged()
 {
-    juce::String err;
+    // BUG-4 fix: all inputs are kept running (so source switching is instant),
+    // but errors are only reported for the currently active source.
+    const int activeSrc = sourceCombo_.getSelectedId();
+    juce::String ltcErr, mtcErr, artErr, oscErr;
 
     const int ltcSelectedId = ltcInDeviceCombo_.getSelectedId();
     const int ltcIdx = ltcSelectedId > 0 ? ltcSelectedId - 1 : -1;
@@ -1412,17 +1190,17 @@ void MainContentComponent::onInputSettingsChanged()
                                      comboChannelIndex (ltcInChannelCombo_),
                                      comboSampleRate (ltcInSampleRateCombo_),
                                      0,
-                                     err);
+                                     ltcErr);
 
     if (mtcInCombo_.getNumItems() > 0)
-        bridgeEngine_.startMtcInput (mtcInCombo_.getSelectedItemIndex(), err);
+        bridgeEngine_.startMtcInput (mtcInCombo_.getSelectedItemIndex(), mtcErr);
 
     if (artnetInCombo_.getNumItems() > 0)
     {
         const auto artnetListenIp = artnetListenIpEditor_.getText().trim();
         bridgeEngine_.startArtnetInput (artnetInCombo_.getSelectedItemIndex(),
                                         (artnetListenIp == "0.0.0.0" ? juce::String() : artnetListenIp),
-                                        err);
+                                        artErr);
     }
 
     FrameRate fps = FrameRate::FPS_25;
@@ -1435,12 +1213,17 @@ void MainContentComponent::onInputSettingsChanged()
                                  fps,
                                  oscAddrStrEditor_.getText(),
                                  oscAddrFloatEditor_.getText(),
-                                 err);
+                                 oscErr);
 
     restartSelectedSource();
 
-    if (err.isNotEmpty())
-        setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+    // Only surface the error for whichever source is currently selected.
+    const juce::String activeErr = (activeSrc == 1) ? ltcErr
+                                 : (activeSrc == 2) ? mtcErr
+                                 : (activeSrc == 3) ? artErr
+                                 :                    oscErr;
+    if (activeErr.isNotEmpty())
+        setStatusText (activeErr, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
 }
 
 void MainContentComponent::timerCallback()
@@ -1673,32 +1456,8 @@ int MainContentComponent::offsetFromEditor (const juce::TextEditor& editor)
     return juce::jlimit (-30, 30, editor.getText().getIntValue());
 }
 
-void MainContentComponent::styleCombo (juce::ComboBox& c)
-{
-    c.setColour (juce::ComboBox::backgroundColourId, kInput);
-    c.setColour (juce::ComboBox::outlineColourId, kRow);
-    c.setColour (juce::ComboBox::textColourId, juce::Colour::fromRGB (0xc0, 0xc0, 0xc0));
-}
-
-void MainContentComponent::styleEditor (juce::TextEditor& e)
-{
-    e.setColour (juce::TextEditor::backgroundColourId, kInput);
-    e.setColour (juce::TextEditor::outlineColourId, kRow);
-    e.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour::fromRGB (0x56, 0x5f, 0x6b));
-    e.setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (0xc0, 0xc0, 0xc0));
-    e.setJustification (juce::Justification::centredLeft);
-    e.setIndents (8, 2);
-}
-
-void MainContentComponent::styleSlider (juce::Slider& s, bool dbStyle)
-{
-    s.setColour (juce::Slider::backgroundColourId, juce::Colour::fromRGB (0x20, 0x20, 0x20));
-    s.setColour (juce::Slider::trackColourId, dbStyle ? kTeal : juce::Colour::fromRGB (0x1f, 0x3b, 0x45));
-    s.setColour (juce::Slider::thumbColourId, juce::Colours::white);
-    s.setColour (juce::Slider::textBoxTextColourId, juce::Colour::fromRGB (0xc0, 0xc0, 0xc0));
-    s.setColour (juce::Slider::textBoxOutlineColourId, kRow);
-    s.setColour (juce::Slider::textBoxBackgroundColourId, kInput);
-}
+// styleCombo / styleEditor / styleSlider are now free functions in
+// ui/style/StyleHelpers.h (included via MainWindow.h) — no member impls needed.
 
 void MainContentComponent::syncOscIpWithAdapter()
 {
@@ -1731,41 +1490,7 @@ juce::StringArray MainContentComponent::collectArtnetTargets() const
     return out;
 }
 
-juce::File MainContentComponent::findBridgeBaseDir() const
-{
-    auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
-    juce::Array<juce::File> roots;
-    roots.add (exeDir);
-    roots.add (juce::File::getCurrentWorkingDirectory());
-
-    auto p = exeDir;
-    for (int i = 0; i < 8 && p.exists(); ++i)
-    {
-        roots.addIfNotAlreadyThere (p);
-        p = p.getParentDirectory();
-    }
-
-    for (auto r : roots)
-    {
-        if (r.getChildFile ("Fonts").isDirectory()
-            && r.getChildFile ("Help").isDirectory()
-            && r.getChildFile ("Icons").isDirectory())
-            return r;
-
-        const juce::StringArray names { "EASYBRIDGE-JUSE", "MTC_Bridge" };
-        for (const auto& name : names)
-        {
-            auto candidate = r.getChildFile (name);
-            if (candidate.isDirectory()
-                && candidate.getChildFile ("Fonts").isDirectory()
-                && candidate.getChildFile ("Help").isDirectory()
-                && candidate.getChildFile ("Icons").isDirectory())
-                return candidate;
-        }
-    }
-
-    return {};
-}
+// findBridgeBaseDir() instance method removed — use platform::findBridgeBaseDir() everywhere.
 
 void MainContentComponent::setStatusText (const juce::String& text, juce::Colour colour)
 {
@@ -2125,13 +1850,16 @@ void MainContentComponent::openSettingsMenu()
 
 void MainContentComponent::openHelpPage()
 {
-    auto base = findBridgeBaseDir();
+    // BUG-8 fix: use platform::findBridgeBaseDir() and open the file directly
+    // via startAsProcess() so the OS picks the default browser without needing
+    // a "file:///" prefix workaround.
+    const auto base = platform::findBridgeBaseDir();
     if (! base.exists())
         return;
 
-    auto help = base.getChildFile ("Help/easy_bridge_v2_help.html");
+    const auto help = base.getChildFile ("Help/easy_bridge_v2_help.html");
     if (help.existsAsFile())
-        juce::URL (help.getFullPathName()).launchInDefaultBrowser();
+        help.startAsProcess();
 }
 
 MainWindow::MainWindow()
@@ -2144,7 +1872,7 @@ MainWindow::MainWindow()
     setResizable (false, false);
     setResizeLimits (430, 420, 430, 1600);
     setContentOwned (new MainContentComponent(), true);
-    const auto icon = loadBridgeAppIcon();
+    const auto icon = platform::loadBridgeAppIcon();
     setIcon (icon);
     createTrayIcon();
     if (trayIcon_ != nullptr && icon.isValid())
@@ -2155,8 +1883,12 @@ MainWindow::MainWindow()
 #if JUCE_WINDOWS
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainWindow> (this)]
     {
-        if (safe != nullptr)
-            applyNativeDarkTitleBar (*safe);
+        if (safe == nullptr)
+            return;
+        platform::applyNativeDarkTitleBar (*safe);
+        // Strip the OS-level resize border — JUCE's setResizable(false) alone does
+        // not remove WS_THICKFRAME when a native title bar is in use.
+        platform::applyNativeFixedWindow (*safe);
     });
 #endif
 }

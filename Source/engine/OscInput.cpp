@@ -36,10 +36,17 @@ bool OscInput::start (int port, juce::String bindIp, FrameRate fps, juce::String
     lastPacketTsMs_.store (0.0, std::memory_order_relaxed);
     lastStringTsMs_.store (0.0, std::memory_order_relaxed);
     bindFellBack_.store (false, std::memory_order_relaxed);
+
+    // BUG-2: debug log is only active in debug builds.
+#if JUCE_DEBUG
     debugEnabled_ = true;
     debugLog_ = juce::File::getSpecialLocation (juce::File::tempDirectory)
                     .getChildFile ("easybridge_osc_debug.log");
-    debugLog_.appendText ("\n=== OSC start bind " + bindIp_ + ":" + juce::String (port) + " str=" + addrStr_ + " float=" + addrFloat_ + " ===\n");
+    debugLog_.appendText ("\n=== OSC start bind " + bindIp_ + ":" + juce::String (port)
+                          + " str=" + addrStr_ + " float=" + addrFloat_ + " ===\n");
+#else
+    debugEnabled_ = false;
+#endif
 
     socket_ = std::make_unique<juce::DatagramSocket> (false);
     bool bound = false;
@@ -61,14 +68,18 @@ bool OscInput::start (int port, juce::String bindIp, FrameRate fps, juce::String
     {
         socket_.reset();
         errorOut = "Failed to bind OSC " + bindIp_ + ":" + juce::String (port);
+#if JUCE_DEBUG
         debugLog_.appendText ("bind failed\n");
+#endif
         return false;
     }
 
     bindFellBack_.store (fellBack, std::memory_order_relaxed);
     running_.store (true, std::memory_order_relaxed);
     startThread();
+#if JUCE_DEBUG
     debugLog_.appendText ("bind ok, thread started\n");
+#endif
     errorOut.clear();
     return true;
 }
@@ -121,6 +132,7 @@ void OscInput::run()
         if (bytesRead <= 0)
             continue;
 
+#if JUCE_DEBUG
         if (debugEnabled_)
         {
             const auto now = juce::Time::getMillisecondCounterHiRes();
@@ -130,6 +142,7 @@ void OscInput::run()
                 lastDebugPacketTsMs_ = now;
             }
         }
+#endif
         parsePacket (packet, bytesRead, 0);
     }
 }

@@ -5,6 +5,16 @@ project(MTC_Bridge_JUCE VERSION 2.4.13 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ─── Centralized version ────────────────────────────────────────────────────
+# Version is defined ONLY in the project() call above.
+# BridgeVersion.h is auto-generated from BridgeVersion.h.in at configure time.
+# To release a new version: change the VERSION field in project() and re-run cmake.
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/core/BridgeVersion.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/core/BridgeVersion.h"
+    @ONLY
+)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -39,6 +49,17 @@ target_sources(EasyBridge PRIVATE
   Source/core/ClockState.h
   Source/core/ConfigStore.cpp
   Source/core/ConfigStore.h
+  # ── Extracted UI & platform helpers ────────────────────────────────────────
+  Source/platform/WindowUtils.cpp
+  Source/platform/WindowUtils.h
+  Source/ui/style/BridgeColours.h
+  Source/ui/style/BridgeLookAndFeel.h
+  Source/ui/style/StyleHelpers.h
+  Source/ui/widgets/CircleButtons.h
+  Source/ui/widgets/DotToggle.h
+  Source/ui/widgets/MacSwitch.h
+  Source/ui/widgets/LevelMeter.h
+  Source/ui/StatusMonitorWindow.h
 )
 
 target_compile_definitions(EasyBridge PRIVATE

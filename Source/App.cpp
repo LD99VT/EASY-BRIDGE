@@ -31,5 +31,8 @@ void BridgeApplication::systemRequestedQuit()
 
 void BridgeApplication::anotherInstanceStarted (const juce::String&)
 {
+    // BUG-9: bring existing window to front instead of launching a second instance.
+    if (mainWindow_ != nullptr)
+        mainWindow_->showFromTray();
 }
 } // namespace bridge

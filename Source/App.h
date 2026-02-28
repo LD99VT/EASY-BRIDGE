@@ -11,7 +11,9 @@ class BridgeApplication final : public juce::JUCEApplication
 public:
     const juce::String getApplicationName() override;
     const juce::String getApplicationVersion() override;
-    bool moreThanOneInstanceAllowed() override { return true; }
+    // BUG-9: single instance — second launch shows the existing window instead
+    // of starting a second process that would conflict on OSC/ArtNet ports.
+    bool moreThanOneInstanceAllowed() override { return false; }
 
     void initialise (const juce::String& commandLine) override;
     void shutdown() override;

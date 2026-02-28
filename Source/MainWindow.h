@@ -8,305 +8,18 @@
 
 #include "engine/BridgeEngine.h"
 
+// ─── UI style & widget components (extracted from monolith) ──────────────────
+#include "ui/style/BridgeColours.h"
+#include "ui/style/BridgeLookAndFeel.h"
+#include "ui/style/StyleHelpers.h"
+#include "ui/widgets/CircleButtons.h"
+#include "ui/widgets/DotToggle.h"
+#include "ui/widgets/MacSwitch.h"
+#include "ui/widgets/LevelMeter.h"
+
 namespace bridge
 {
 class BridgeAudioScanThread;
-
-class ExpandCircleButton final : public juce::Component
-{
-public:
-    std::function<void()> onClick;
-
-    void setExpanded (bool expanded)
-    {
-        expanded_ = expanded;
-        repaint();
-    }
-
-    bool isExpanded() const { return expanded_; }
-
-    void paint (juce::Graphics& g) override
-    {
-        const auto b = getLocalBounds().toFloat().reduced (1.0f);
-        const auto bg = juce::Colour::fromRGB (0x48, 0x48, 0x48);
-        g.setColour (bg);
-        g.fillEllipse (b);
-        g.setColour (juce::Colour::fromRGB (0x5a, 0x5a, 0x5a));
-        g.drawEllipse (b, 1.0f);
-
-        juce::Path p;
-        const auto cx = b.getCentreX();
-        const auto cy = b.getCentreY();
-        const float s = 5.8f; // larger arrow
-        if (expanded_)
-        {
-            p.startNewSubPath (cx - s, cy - 2.0f);
-            p.lineTo (cx + s, cy - 2.0f);
-            p.lineTo (cx, cy + s);
-        }
-        else
-        {
-            p.startNewSubPath (cx - 2.0f, cy - s);
-            p.lineTo (cx - 2.0f, cy + s);
-            p.lineTo (cx + s, cy);
-        }
-        p.closeSubPath();
-        g.setColour (juce::Colour::fromRGB (0xf2, 0xf2, 0xf2));
-        g.fillPath (p);
-    }
-
-    void mouseUp (const juce::MouseEvent&) override
-    {
-        if (onClick)
-            onClick();
-    }
-
-private:
-    bool expanded_ { false };
-};
-
-class HelpCircleButton final : public juce::Component
-{
-public:
-    std::function<void()> onClick;
-
-    void paint (juce::Graphics& g) override
-    {
-        auto b = getLocalBounds().toFloat().reduced (1.0f);
-        g.setColour (juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-        g.fillEllipse (b);
-        g.setColour (juce::Colour::fromRGB (0x66, 0x66, 0x66));
-        g.drawEllipse (b, 1.5f);
-
-        g.setColour (juce::Colour::fromRGB (0x99, 0x99, 0x99));
-        auto f = juce::FontOptions (13.0f);
-        f = f.withStyle ("Bold");
-        g.setFont (juce::Font (f));
-        auto textArea = getLocalBounds().translated (0, -1);
-        g.drawFittedText ("?", textArea, juce::Justification::centred, 1);
-    }
-
-    void mouseUp (const juce::MouseEvent&) override
-    {
-        if (onClick)
-            onClick();
-    }
-};
-
-class DotToggle final : public juce::Component
-{
-public:
-    std::function<void(bool)> onToggle;
-    void setState (bool s) { state_ = s; repaint(); }
-    bool getState() const { return state_; }
-
-    void paint (juce::Graphics& g) override
-    {
-        auto b = getLocalBounds().toFloat().reduced (1.0f);
-        g.setColour (juce::Colour::fromRGB (0x8b, 0x8b, 0x8b));
-        g.drawEllipse (b, 1.6f);
-        g.setColour (juce::Colour::fromRGB (0x24, 0x24, 0x24));
-        g.fillEllipse (b.reduced (1.6f));
-        if (state_)
-        {
-            g.setColour (juce::Colour::fromRGB (0xe6, 0xe6, 0xe6));
-            g.fillEllipse (b.reduced (5.0f));
-        }
-    }
-
-    void mouseUp (const juce::MouseEvent&) override
-    {
-        state_ = ! state_;
-        repaint();
-        if (onToggle)
-            onToggle (state_);
-    }
-
-private:
-    bool state_ { false };
-};
-
-class MacSwitch final : public juce::Component
-{
-public:
-    std::function<void(bool)> onToggle;
-    void setState (bool s) { state_ = s; repaint(); }
-    bool getState() const { return state_; }
-
-    void paint (juce::Graphics& g) override
-    {
-        auto b = getLocalBounds().toFloat().reduced (1.0f);
-        g.setColour (state_ ? juce::Colour::fromRGB (0x4c, 0xbd, 0x54) : juce::Colour::fromRGB (0x3f, 0x3f, 0x3f));
-        g.fillRoundedRectangle (b, b.getHeight() * 0.5f);
-        g.setColour (state_ ? juce::Colour::fromRGB (0x56, 0xc8, 0x5f) : juce::Colour::fromRGB (0x4b, 0x4b, 0x4b));
-        g.drawRoundedRectangle (b, b.getHeight() * 0.5f, 1.0f);
-        const float d = b.getHeight() - 4.0f;
-        const float x = state_ ? (b.getRight() - d - 2.0f) : (b.getX() + 2.0f);
-        g.setColour (juce::Colours::white);
-        g.fillEllipse (x, b.getY() + 2.0f, d, d);
-    }
-
-    void mouseUp (const juce::MouseEvent&) override
-    {
-        state_ = ! state_;
-        repaint();
-        if (onToggle)
-            onToggle (state_);
-    }
-
-private:
-    bool state_ { false };
-};
-
-class LevelMeter final : public juce::Component
-{
-public:
-    LevelMeter() { setOpaque (false); }
-
-    void setLevel (float newLevel)
-    {
-        newLevel = juce::jlimit (0.0f, 2.0f, newLevel);
-        if (std::abs (currentLevel_ - newLevel) > 0.001f)
-        {
-            currentLevel_ = newLevel;
-            repaint();
-        }
-    }
-
-    void setMeterColour (juce::Colour c) { meterColour_ = c; }
-
-    void paint (juce::Graphics& g) override
-    {
-        auto intBounds = getLocalBounds();
-        constexpr float corner = 2.0f;
-
-        g.setColour (juce::Colour (0xFF0D0E12));
-        g.fillRoundedRectangle (intBounds.toFloat(), corner);
-
-        auto bounds = intBounds.toFloat().reduced (1.0f);
-        if (currentLevel_ > 0.001f)
-        {
-            const float displayLevel = juce::jmin (1.0f, currentLevel_);
-            const auto fillBounds = bounds.withWidth (bounds.getWidth() * displayLevel);
-
-            juce::Colour barColour;
-            if (currentLevel_ < 0.6f)
-                barColour = meterColour_.withAlpha (0.7f);
-            else if (currentLevel_ < 0.85f)
-                barColour = juce::Colour (0xFFFFAB00).withAlpha (0.8f);
-            else
-                barColour = juce::Colour (0xFFC62828).withAlpha (0.9f);
-
-            g.setColour (barColour);
-            g.fillRoundedRectangle (fillBounds, corner);
-            g.setColour (juce::Colours::white.withAlpha (0.08f));
-            g.fillRoundedRectangle (fillBounds.withHeight (fillBounds.getHeight() * 0.4f), corner);
-
-            if (currentLevel_ > 1.0f)
-            {
-                g.setColour (juce::Colour (0xFFC62828).withAlpha (0.3f));
-                g.fillRoundedRectangle (bounds, corner);
-            }
-        }
-
-        g.setColour (juce::Colour (0xFF2A2D35));
-        g.drawRoundedRectangle (bounds, corner, 0.5f);
-
-        g.setColour (juce::Colour (0xFF2A2D35).withAlpha (0.6f));
-        for (auto tp : { 0.25f, 0.5f, 0.75f })
-        {
-            const float x = bounds.getX() + bounds.getWidth() * tp;
-            g.drawLine (x, bounds.getY(), x, bounds.getBottom(), 0.5f);
-        }
-    }
-
-private:
-    float currentLevel_ { 0.0f };
-    juce::Colour meterColour_ { juce::Colour (0xFF2E7D32) };
-};
-
-class BridgeLookAndFeel final : public juce::LookAndFeel_V4
-{
-public:
-    void drawPopupMenuBackground (juce::Graphics& g, int width, int height) override
-    {
-        g.fillAll (findColour (juce::PopupMenu::backgroundColourId));
-    }
-
-    void drawButtonBackground (juce::Graphics& g,
-                               juce::Button& button,
-                               const juce::Colour& backgroundColour,
-                               bool isMouseOverButton,
-                               bool isButtonDown) override
-    {
-        juce::ignoreUnused (backgroundColour);
-        auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
-        auto c = button.findColour (juce::TextButton::buttonColourId);
-        if (isButtonDown)
-            c = c.darker (0.15f);
-        else if (isMouseOverButton)
-            c = c.brighter (0.08f);
-
-        g.setColour (c);
-        g.fillRoundedRectangle (bounds, 5.0f);
-        g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
-        g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
-    }
-
-    void drawComboBox (juce::Graphics& g,
-                       int width,
-                       int height,
-                       bool,
-                       int,
-                       int,
-                       int,
-                       int,
-                       juce::ComboBox& box) override
-    {
-        auto bounds = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (0.5f);
-        const auto bg = box.findColour (juce::ComboBox::backgroundColourId);
-        const auto outline = box.findColour (juce::ComboBox::outlineColourId);
-        const auto arrow = box.findColour (juce::ComboBox::arrowColourId);
-
-        g.setColour (bg);
-        g.fillRoundedRectangle (bounds, 5.0f);
-        g.setColour (outline);
-        g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
-
-        juce::Path p;
-        const float cx = (float) width - 14.0f;
-        const float cy = (float) height * 0.5f;
-        p.startNewSubPath (cx - 5.0f, cy - 2.0f);
-        p.lineTo (cx, cy + 3.0f);
-        p.lineTo (cx + 5.0f, cy - 2.0f);
-        g.setColour (arrow);
-        g.strokePath (p, juce::PathStrokeType (1.5f));
-    }
-
-    void positionComboBoxText (juce::ComboBox& box, juce::Label& label) override
-    {
-        label.setBounds (box.getLocalBounds().reduced (8, 1));
-        label.setFont (getComboBoxFont (box));
-        label.setJustificationType (juce::Justification::centredLeft);
-    }
-
-    void fillTextEditorBackground (juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
-    {
-        auto bounds = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (0.5f);
-        g.setColour (editor.findColour (juce::TextEditor::backgroundColourId));
-        g.fillRoundedRectangle (bounds, 5.0f);
-    }
-
-    void drawTextEditorOutline (juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
-    {
-        auto bounds = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (0.5f);
-        const auto c = editor.hasKeyboardFocus (true)
-                           ? editor.findColour (juce::TextEditor::focusedOutlineColourId)
-                           : editor.findColour (juce::TextEditor::outlineColourId);
-        g.setColour (c);
-        g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
-    }
-};
 
 class MainContentComponent final : public juce::Component, private juce::Timer
 {
@@ -345,13 +58,9 @@ private:
     static int comboBufferSize (const juce::ComboBox& combo);
     static int comboChannelIndex (const juce::ComboBox& combo);
     static int offsetFromEditor (const juce::TextEditor& editor);
-    static void styleCombo (juce::ComboBox& c);
-    static void styleEditor (juce::TextEditor& e);
-    static void styleSlider (juce::Slider& s, bool dbStyle);
     void syncOscIpWithAdapter();
     void updateArtnetIpControls();
     juce::StringArray collectArtnetTargets() const;
-    juce::File findBridgeBaseDir() const;
     void setStatusText (const juce::String& text, juce::Colour colour);
     void openStatusMonitorWindow();
     void openSettingsMenu();
@@ -420,34 +129,34 @@ private:
     ExpandCircleButton outLtcExpandBtn_;
     ExpandCircleButton outMtcExpandBtn_;
     ExpandCircleButton outArtExpandBtn_;
-    juce::Label inDriverLbl_ { {}, "Driver:" };
-    juce::Label inDeviceLbl_ { {}, "Device (input):" };
-    juce::Label inChannelLbl_ { {}, "Channel:" };
-    juce::Label inRateLbl_ { {}, "Sample rate:" };
-    juce::Label inLevelLbl_ { {}, "Level:" };
-    juce::Label inGainLbl_ { {}, "Input gain:" };
-    juce::Label mtcInLbl_ { {}, "MTC Input:" };
-    juce::Label artInLbl_ { {}, "ArtNet adapter:" };
-    juce::Label artInListenIpLbl_ { {}, "Listen IP:" };
-    juce::Label oscIpLbl_ { {}, "OSC Listen IP:" };
-    juce::Label oscPortLbl_ { {}, "OSC Port:" };
-    juce::Label oscAdapterLbl_ { {}, "OSC adapter:" };
-    juce::Label oscFpsLbl_ { {}, "OSC FPS:" };
-    juce::Label oscStrLbl_ { {}, "OSC str cmd:" };
-    juce::Label oscFloatLbl_ { {}, "OSC float cmd:" };
+    juce::Label inDriverLbl_       { {}, "Driver:" };
+    juce::Label inDeviceLbl_       { {}, "Device (input):" };
+    juce::Label inChannelLbl_      { {}, "Channel:" };
+    juce::Label inRateLbl_         { {}, "Sample rate:" };
+    juce::Label inLevelLbl_        { {}, "Level:" };
+    juce::Label inGainLbl_         { {}, "Input gain:" };
+    juce::Label mtcInLbl_          { {}, "MTC Input:" };
+    juce::Label artInLbl_          { {}, "ArtNet adapter:" };
+    juce::Label artInListenIpLbl_  { {}, "Listen IP:" };
+    juce::Label oscIpLbl_          { {}, "OSC Listen IP:" };
+    juce::Label oscPortLbl_        { {}, "OSC Port:" };
+    juce::Label oscAdapterLbl_     { {}, "OSC adapter:" };
+    juce::Label oscFpsLbl_         { {}, "OSC FPS:" };
+    juce::Label oscStrLbl_         { {}, "OSC str cmd:" };
+    juce::Label oscFloatLbl_       { {}, "OSC float cmd:" };
 
-    juce::Label outDriverLbl_ { {}, "Driver:" };
-    juce::Label outDeviceLbl_ { {}, "Device (out):" };
+    juce::Label outDriverLbl_  { {}, "Driver:" };
+    juce::Label outDeviceLbl_  { {}, "Device (out):" };
     juce::Label outChannelLbl_ { {}, "Channel:" };
-    juce::Label outRateLbl_ { {}, "Sample rate:" };
-    juce::Label outOffsetLbl_ { {}, "Offset (frames):" };
-    juce::Label outLevelLbl_ { {}, "Output level:" };
-    juce::Label mtcOutLbl_ { {}, "MIDI Output:" };
-    juce::Label mtcOffsetLbl_ { {}, "Offset (frames):" };
-    juce::Label artOutLbl_ { {}, "Interface:" };
-    juce::Label artIpLbl_ { {}, "Destination IP:" };
+    juce::Label outRateLbl_    { {}, "Sample rate:" };
+    juce::Label outOffsetLbl_  { {}, "Offset (frames):" };
+    juce::Label outLevelLbl_   { {}, "Output level:" };
+    juce::Label mtcOutLbl_     { {}, "MIDI Output:" };
+    juce::Label mtcOffsetLbl_  { {}, "Offset (frames):" };
+    juce::Label artOutLbl_     { {}, "Interface:" };
+    juce::Label artIpLbl_      { {}, "Destination IP:" };
     std::array<juce::Label, 4> artIpExtraLbls_;
-    juce::Label artOffsetLbl_ { {}, "Offset (frames):" };
+    juce::Label artOffsetLbl_  { {}, "Offset (frames):" };
 
     juce::ComboBox ltcInDeviceCombo_;
     juce::ComboBox ltcInChannelCombo_;
