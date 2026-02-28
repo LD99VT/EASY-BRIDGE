@@ -251,6 +251,13 @@ public:
         {
             ::SendMessageW (hwnd, WM_SETICON, 0, 0);
             ::SendMessageW (hwnd, WM_SETICON, 1, 0);
+            constexpr long kGwlStyle = -16;
+            long st = (long) ::GetWindowLongPtrW (hwnd, kGwlStyle);
+            st &= ~(long) 0x00040000L;  // WS_THICKFRAME
+            st &= ~(long) 0x00010000L;  // WS_MAXIMIZEBOX
+            ::SetWindowLongPtrW (hwnd, kGwlStyle, st);
+            ::SetWindowPos (hwnd, nullptr, 0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
 #endif
         toFront (true);
