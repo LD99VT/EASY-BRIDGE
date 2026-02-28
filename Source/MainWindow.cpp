@@ -455,9 +455,9 @@ MainContentComponent::MainContentComponent()
     outLtcExpandBtn_.setExpanded (false);
     outMtcExpandBtn_.setExpanded (false);
     outArtExpandBtn_.setExpanded (false);
-    outLtcExpandBtn_.onClick = [this] { outLtcExpanded_ = ! outLtcExpanded_; outLtcExpandBtn_.setExpanded (outLtcExpanded_); updateWindowHeight(); resized(); };
-    outMtcExpandBtn_.onClick = [this] { outMtcExpanded_ = ! outMtcExpanded_; outMtcExpandBtn_.setExpanded (outMtcExpanded_); updateWindowHeight(); resized(); };
-    outArtExpandBtn_.onClick = [this] { outArtExpanded_ = ! outArtExpanded_; outArtExpandBtn_.setExpanded (outArtExpanded_); updateWindowHeight(); resized(); };
+    outLtcExpandBtn_.onClick = [this] { outLtcExpanded_ = ! outLtcExpanded_; outLtcExpandBtn_.setExpanded (outLtcExpanded_); updateWindowHeight(); };
+    outMtcExpandBtn_.onClick = [this] { outMtcExpanded_ = ! outMtcExpanded_; outMtcExpandBtn_.setExpanded (outMtcExpanded_); updateWindowHeight(); };
+    outArtExpandBtn_.onClick = [this] { outArtExpanded_ = ! outArtExpanded_; outArtExpandBtn_.setExpanded (outArtExpanded_); updateWindowHeight(); };
 
     for (auto* c : { &ltcOutSwitch_, &mtcOutSwitch_, &artnetOutSwitch_ })
         addAndMakeVisible (*c);
@@ -639,14 +639,17 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
     addRows (1); // out ArtNet header
     if (outArtExpanded) addRows (2 + artnetDestVisibleCount_);
 
-    h += 24 + 4; // status
-    h += 36 + 4; // settings/quit
-    h += 8;  // bottom pad
+    h += 4; // gap before status
+    h += 24; // status
+    h += 4; // gap
+    h += 40; // settings/quit buttons
     return juce::jlimit (420, 1600, h);
 }
 
 void MainContentComponent::updateWindowHeight()
 {
+    const int currentContent = calcPreferredHeight();
+
     if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
     {
         if (window->isMinimised())
@@ -657,17 +660,21 @@ void MainContentComponent::updateWindowHeight()
 
         const int collapsedContent = calcHeightForState (false, sourceCombo_.getSelectedId(), false, false, false);
         const int expandedContent = calcHeightForState (true, sourceCombo_.getSelectedId(), true, true, true);
-        const int currentContent = calcPreferredHeight();
 
         const int minTotal = collapsedContent + chrome;
         const int maxTotal = expandedContent + chrome;
         const int targetTotal = juce::jlimit (minTotal, maxTotal, currentContent + chrome);
 
-        // Lock manual vertical resizing; height changes only via UI state updates.
         window->setResizeLimits (430, minTotal, 430, maxTotal);
         if (window->getHeight() != targetTotal)
             window->setSize (window->getWidth(), targetTotal);
     }
+
+    // Force the content component to the exact calculated height so that any
+    // subsequent resized() call (explicit or from JUCE) lays out correctly,
+    // even if the window resize hasn't propagated synchronously yet.
+    if (getHeight() != currentContent)
+        setSize (getWidth(), currentContent);
 }
 
 void MainContentComponent::loadFontsAndIcon()
@@ -768,11 +775,6 @@ void MainContentComponent::paint (juce::Graphics& g)
     for (auto r : paramRowRects_)
         g.drawRoundedRectangle (r.toFloat(), 5.0f, 1.0f);
 
-    if (! statusRect_.isEmpty())
-    {
-        g.setColour (juce::Colour::fromRGB (0x3f, 0x3f, 0x3f));
-        g.drawRoundedRectangle (statusRect_.toFloat(), 4.0f, 1.0f);
-    }
     if (! buttonRowRect_.isEmpty())
     {
         g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
@@ -808,11 +810,6 @@ void MainContentComponent::resized()
     tcLabel_.setBounds (a.removeFromTop (90));
     tcFpsLabel_.setBounds (a.removeFromTop (24));
     a.removeFromTop (4);
-
-    // Reserve bottom strip BEFORE section rows so status/buttons are always visible.
-    buttonRowRect_ = a.removeFromBottom (40);
-    a.removeFromBottom (4);
-    statusRect_ = a.removeFromBottom (24);
 
     auto row = [&a] (int h = 40)
     {
@@ -1008,10 +1005,15 @@ void MainContentComponent::resized()
         fieldRow (artOffsetLbl_, artnetOffsetEditor_);
     }
 
-    auto buttons = buttonRowRect_.reduced (0, 0);
+    // Status and buttons: top-down, directly after last row (gap included via row() pattern).
+    statusRect_ = a.removeFromTop (24);
+    a.removeFromTop (4);
+    buttonRowRect_ = a.removeFromTop (40);
+
+    statusButton_.setBounds (statusRect_);
+    auto buttons = buttonRowRect_;
     settingsButton_.setBounds (buttons.removeFromLeft (buttons.getWidth() / 2).reduced (1, 0));
     quitButton_.setBounds (buttons.reduced (1, 0));
-    statusButton_.setBounds (statusRect_.reduced (0, 0));
 
     // BUG-6 fix: removed the redundant setVisible block here that was immediately
     // overridden by the sourceExpanded_ && src == N block that follows.
