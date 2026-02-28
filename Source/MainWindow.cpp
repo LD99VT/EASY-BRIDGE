@@ -809,6 +809,11 @@ void MainContentComponent::resized()
     tcFpsLabel_.setBounds (a.removeFromTop (24));
     a.removeFromTop (4);
 
+    // Reserve bottom strip BEFORE section rows so status/buttons are always visible.
+    buttonRowRect_ = a.removeFromBottom (40);
+    a.removeFromBottom (4);
+    statusRect_ = a.removeFromBottom (24);
+
     auto row = [&a] (int h = 40)
     {
         auto r = a.removeFromTop (h);
@@ -1003,12 +1008,9 @@ void MainContentComponent::resized()
         fieldRow (artOffsetLbl_, artnetOffsetEditor_);
     }
 
-    buttonRowRect_ = a.removeFromBottom (40);
     auto buttons = buttonRowRect_.reduced (0, 0);
     settingsButton_.setBounds (buttons.removeFromLeft (buttons.getWidth() / 2).reduced (1, 0));
     quitButton_.setBounds (buttons.reduced (1, 0));
-    a.removeFromBottom (4); // keep gap below status bar (above buttons)
-    statusRect_ = a.removeFromBottom (24);
     statusButton_.setBounds (statusRect_.reduced (0, 0));
 
     // BUG-6 fix: removed the redundant setVisible block here that was immediately

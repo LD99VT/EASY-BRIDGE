@@ -21,6 +21,8 @@ void BridgeApplication::initialise (const juce::String&)
 
 void BridgeApplication::shutdown()
 {
+    if (mainWindow_ != nullptr)
+        mainWindow_->setVisible (false); // prevent white flash during destruction
     mainWindow_.reset();
 }
 
