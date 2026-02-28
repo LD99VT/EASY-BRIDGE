@@ -385,6 +385,7 @@ private:
     juce::Label tcLabel_;
     juce::Label tcFpsLabel_;
     juce::TextButton statusButton_;
+    juce::Component::SafePointer<juce::Component> statusMonitor_;
     juce::TextButton settingsButton_ { "Settings" };
     juce::TextButton quitButton_ { "Quit" };
     bool closeToTray_ { false };

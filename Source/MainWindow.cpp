@@ -1,9 +1,11 @@
-﻿#include "MainWindow.h"
+#include "MainWindow.h"
 #include "core/BridgeVersion.h"
 #include <cmath>
 
 #if JUCE_WINDOWS
 #include <windows.h>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 #endif
 
 namespace bridge
@@ -219,6 +221,135 @@ void applyNativeDarkTitleBar (juce::DocumentWindow& window)
     ::FreeLibrary (dwm);
 }
 #endif
+
+// ─── Live Bridge Status Monitor window (same style as EASYTRIGGER-JYCE) ─────
+class StatusMonitorWindow final : public juce::DocumentWindow,
+                                  private juce::Timer
+{
+public:
+    using Getter = std::function<void (juce::Array<juce::String>&, juce::Array<juce::String>&)>;
+
+    StatusMonitorWindow (Getter getter, juce::Component* relativeTo)
+        : juce::DocumentWindow ("Bridge Status Monitor",
+                                juce::Colour::fromRGB (0x1e, 0x1e, 0x1e),
+                                juce::DocumentWindow::closeButton),
+          getter_ (std::move (getter))
+    {
+        setUsingNativeTitleBar (true);
+        setResizable (false, false);
+        setContentOwned (new Content (*this), true);
+        centreWithSize (420, 390);
+        if (relativeTo != nullptr)
+        {
+            const auto rc = relativeTo->getScreenBounds();
+            setBounds (rc.getCentreX() - 210, rc.getCentreY() - 195, 420, 390);
+        }
+        setVisible (true);
+#if JUCE_WINDOWS
+        applyNativeDarkTitleBar (*this);
+        if (auto* hwnd = (HWND) getWindowHandle())
+        {
+            ::SendMessageW (hwnd, WM_SETICON, 0, 0);
+            ::SendMessageW (hwnd, WM_SETICON, 1, 0);
+        }
+#endif
+        toFront (true);
+        startTimerHz (5);
+    }
+
+    void closeButtonPressed() override { delete this; }
+
+    void timerCallback() override
+    {
+        if (auto* c = dynamic_cast<Content*> (getContentComponent()))
+            c->refresh();
+    }
+
+    void getValues (juce::Array<juce::String>& keys, juce::Array<juce::String>& vals)
+    {
+        getter_ (keys, vals);
+    }
+
+private:
+    Getter getter_;
+
+    static constexpr int kRows = 10;
+
+    struct Content final : juce::Component
+    {
+        StatusMonitorWindow& win_;
+
+        juce::Label keyLbls_[kRows];
+        juce::Label valLbls_[kRows];
+        juce::TextButton ok_ { "OK" };
+
+        explicit Content (StatusMonitorWindow& w) : win_ (w)
+        {
+            const juce::Colour keyCol = juce::Colour::fromRGB (0x7a, 0x7a, 0x86);
+            const juce::Colour valCol = juce::Colour::fromRGB (0xe0, 0xe0, 0xe0);
+
+            for (int i = 0; i < kRows; ++i)
+            {
+                keyLbls_[i].setFont (juce::FontOptions (12.5f).withStyle ("Bold"));
+                keyLbls_[i].setColour (juce::Label::textColourId, keyCol);
+                keyLbls_[i].setJustificationType (juce::Justification::centredRight);
+                addAndMakeVisible (keyLbls_[i]);
+
+                valLbls_[i].setFont (juce::FontOptions (12.5f));
+                valLbls_[i].setColour (juce::Label::textColourId, valCol);
+                valLbls_[i].setJustificationType (juce::Justification::centredLeft);
+                addAndMakeVisible (valLbls_[i]);
+            }
+
+            ok_.setColour (juce::TextButton::buttonColourId,   juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+            ok_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+            ok_.setColour (juce::TextButton::textColourOffId,  juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+            ok_.setColour (juce::TextButton::textColourOnId,   juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+            ok_.onClick = [this]
+            {
+                juce::MessageManager::callAsync ([w = &win_] { delete w; });
+            };
+            addAndMakeVisible (ok_);
+
+            refresh();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            g.fillAll (juce::Colour::fromRGB (0x17, 0x17, 0x17));
+        }
+
+        void resized() override
+        {
+            constexpr int kRowH = 30;
+            constexpr int kPad  = 14;
+            constexpr int kKeyW = 120;
+            constexpr int kGap  = 10;
+            const int valW = getWidth() - kPad * 2 - kKeyW - kGap;
+
+            for (int i = 0; i < kRows; ++i)
+            {
+                const int y = kPad + i * kRowH;
+                keyLbls_[i].setBounds (kPad, y, kKeyW, kRowH);
+                valLbls_[i].setBounds (kPad + kKeyW + kGap, y, valW, kRowH);
+            }
+
+            const int btnY = kPad + kRows * kRowH + kPad;
+            ok_.setBounds ((getWidth() - 100) / 2, btnY, 100, 32);
+        }
+
+        void refresh()
+        {
+            juce::Array<juce::String> keys, vals;
+            win_.getValues (keys, vals);
+            for (int i = 0; i < juce::jmin (kRows, keys.size()); ++i)
+            {
+                keyLbls_[i].setText (keys[i], juce::dontSendNotification);
+                valLbls_[i].setText (vals[i], juce::dontSendNotification);
+            }
+        }
+    };
+};
 
 class BridgeTrayIcon final : public juce::SystemTrayIconComponent
 {
@@ -1564,18 +1695,37 @@ void MainContentComponent::setStatusText (const juce::String& text, juce::Colour
 
 void MainContentComponent::openStatusMonitorWindow()
 {
-    juce::String details;
-    details << "Source: " << sourceCombo_.getText() << "\n";
-    details << "Input TC: " << tcLabel_.getText() << " (" << tcFpsLabel_.getText().fromFirstOccurrenceOf (": ", false, false) << ")\n";
-    details << "LTC Out: " << (ltcOutSwitch_.getState() ? "ON" : "OFF") << " | device: " << ltcOutDeviceCombo_.getText() << "\n";
-    details << "MTC Out: " << (mtcOutSwitch_.getState() ? "ON" : "OFF") << " | port: " << mtcOutCombo_.getText() << "\n";
-    details << "ArtNet Out: " << (artnetOutSwitch_.getState() ? "ON" : "OFF") << " | iface: " << artnetOutCombo_.getText() << "\n";
-    details << "OSC Listen: " << oscIpEditor_.getText() << ":" << oscPortEditor_.getText() << "\n";
-    details << "Status: " << statusButton_.getButtonText();
+    if (statusMonitor_ != nullptr)
+    {
+        statusMonitor_->toFront (true);
+        return;
+    }
 
-    juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::InfoIcon,
-                                            "Bridge Status Monitor",
-                                            details);
+    auto getter = [this] (juce::Array<juce::String>& keys, juce::Array<juce::String>& vals)
+    {
+        keys.clearQuick();
+        vals.clearQuick();
+
+        keys.add ("Source:");        vals.add (sourceCombo_.getText());
+        keys.add ("Input TC:");      vals.add (tcLabel_.getText()
+                                               + "  (" + tcFpsLabel_.getText().fromFirstOccurrenceOf (": ", false, false) + ")");
+        keys.add ("Status:");        vals.add (statusButton_.getButtonText());
+        keys.add ("LTC Out:");       vals.add ((ltcOutSwitch_.getState() ? "ON" : "OFF")
+                                               + juce::String ("  |  ") + ltcOutDeviceCombo_.getText());
+        keys.add ("LTC Ch / Rate:"); vals.add (ltcOutChannelCombo_.getText()
+                                               + "  |  " + ltcOutSampleRateCombo_.getText());
+        keys.add ("MTC In:");        vals.add (mtcInCombo_.getText());
+        keys.add ("MTC Out:");       vals.add ((mtcOutSwitch_.getState() ? "ON" : "OFF")
+                                               + juce::String ("  |  ") + mtcOutCombo_.getText());
+        keys.add ("ArtNet In:");     vals.add (artnetInCombo_.getText()
+                                               + "  |  " + artnetListenIpEditor_.getText());
+        keys.add ("ArtNet Out:");    vals.add ((artnetOutSwitch_.getState() ? "ON" : "OFF")
+                                               + juce::String ("  |  ") + artnetOutCombo_.getText());
+        keys.add ("OSC Listen:");    vals.add (oscIpEditor_.getText() + ":" + oscPortEditor_.getText());
+    };
+
+    auto* win = new StatusMonitorWindow (std::move (getter), getParentComponent());
+    statusMonitor_ = win;
 }
 
 void MainContentComponent::saveConfigAs()
