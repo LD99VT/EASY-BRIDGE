@@ -2,6 +2,9 @@
 
 #include <array>
 #include <juce_gui_extra/juce_gui_extra.h>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include "engine/BridgeEngine.h"
 
@@ -322,6 +325,8 @@ private:
     void loadFontsAndIcon();
     void applyLookAndFeel();
     void restartSelectedSource();
+    void queueLtcOutputApply();
+    void ltcOutputApplyLoop();
     void onOutputToggleChanged();
     void onOutputSettingsChanged();
     void onInputSettingsChanged();
@@ -393,6 +398,16 @@ private:
     juce::File lastConfigFile_;
     std::unique_ptr<juce::FileChooser> saveChooser_;
     std::unique_ptr<juce::FileChooser> loadChooser_;
+    std::thread ltcOutputApplyThread_;
+    std::mutex ltcOutputApplyMutex_;
+    std::condition_variable ltcOutputApplyCv_;
+    bool ltcOutputApplyExit_ { false };
+    bool ltcOutputApplyPending_ { false };
+    engine::AudioChoice pendingLtcOutputChoice_;
+    int pendingLtcOutputChannel_ { 0 };
+    double pendingLtcOutputSampleRate_ { 0.0 };
+    int pendingLtcOutputBufferSize_ { 0 };
+    bool pendingLtcOutputEnabled_ { false };
 
     juce::ComboBox sourceCombo_;
     ExpandCircleButton sourceExpandBtn_;

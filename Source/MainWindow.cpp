@@ -484,6 +484,7 @@ private:
 
 MainContentComponent::MainContentComponent()
 {
+    ltcOutputApplyThread_ = std::thread ([this] { ltcOutputApplyLoop(); });
     setOpaque (true);
 
     loadFontsAndIcon();
@@ -795,6 +796,15 @@ MainContentComponent::MainContentComponent()
 
 MainContentComponent::~MainContentComponent()
 {
+    {
+        const std::lock_guard<std::mutex> lock (ltcOutputApplyMutex_);
+        ltcOutputApplyExit_ = true;
+        ltcOutputApplyPending_ = false;
+    }
+    ltcOutputApplyCv_.notify_all();
+    if (ltcOutputApplyThread_.joinable())
+        ltcOutputApplyThread_.join();
+
     if (scanThread_ != nullptr && scanThread_->isThreadRunning())
         scanThread_->stopThread (2000);
 }
@@ -1290,9 +1300,83 @@ void MainContentComponent::restartSelectedSource()
         bridgeEngine_.setInputSource (engine::InputSource::OSC);
 }
 
+void MainContentComponent::queueLtcOutputApply()
+{
+    const bool enabled = ltcOutSwitch_.getState();
+
+    const int selectedId = ltcOutDeviceCombo_.getSelectedId();
+    const int idx = selectedId > 0 ? selectedId - 1 : -1;
+    if (! juce::isPositiveAndBelow (idx, filteredOutputIndices_.size()))
+    {
+        if (! enabled)
+            bridgeEngine_.setLtcOutputEnabled (false);
+        return;
+    }
+
+    {
+        const std::lock_guard<std::mutex> lock (ltcOutputApplyMutex_);
+        pendingLtcOutputChoice_ = outputChoices_[filteredOutputIndices_[idx]];
+        pendingLtcOutputChannel_ = comboChannelIndex (ltcOutChannelCombo_);
+        pendingLtcOutputSampleRate_ = comboSampleRate (ltcOutSampleRateCombo_);
+        pendingLtcOutputBufferSize_ = 256;
+        pendingLtcOutputEnabled_ = enabled;
+        ltcOutputApplyPending_ = true;
+    }
+
+    ltcOutputApplyCv_.notify_one();
+}
+
+void MainContentComponent::ltcOutputApplyLoop()
+{
+    auto safeThis = juce::Component::SafePointer<MainContentComponent> (this);
+
+    for (;;)
+    {
+        engine::AudioChoice choice;
+        int channel = 0;
+        double sampleRate = 0.0;
+        int bufferSize = 0;
+        bool enabled = false;
+
+        {
+            std::unique_lock<std::mutex> lock (ltcOutputApplyMutex_);
+            ltcOutputApplyCv_.wait (lock, [this] { return ltcOutputApplyExit_ || ltcOutputApplyPending_; });
+            if (ltcOutputApplyExit_)
+                break;
+
+            choice = pendingLtcOutputChoice_;
+            channel = pendingLtcOutputChannel_;
+            sampleRate = pendingLtcOutputSampleRate_;
+            bufferSize = pendingLtcOutputBufferSize_;
+            enabled = pendingLtcOutputEnabled_;
+            ltcOutputApplyPending_ = false;
+        }
+
+        juce::String err;
+        bridgeEngine_.startLtcOutput (choice, channel, sampleRate, bufferSize, err);
+        bridgeEngine_.setLtcOutputEnabled (enabled);
+
+        if (err.isNotEmpty())
+        {
+            juce::MessageManager::callAsync ([safeThis, err]
+            {
+                if (safeThis != nullptr)
+                    safeThis->setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+            });
+        }
+    }
+}
+
 void MainContentComponent::onOutputToggleChanged()
 {
-    bridgeEngine_.setLtcOutputEnabled (ltcOutSwitch_.getState());
+    if (ltcOutSwitch_.getState())
+    {
+        bridgeEngine_.setLtcOutputEnabled (true);
+        queueLtcOutputApply();
+    }
+    else
+        bridgeEngine_.setLtcOutputEnabled (false);
+
     bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
 }
@@ -1300,16 +1384,7 @@ void MainContentComponent::onOutputToggleChanged()
 void MainContentComponent::onOutputSettingsChanged()
 {
     juce::String err;
-    {
-        const int selectedId = ltcOutDeviceCombo_.getSelectedId();
-        const int idx = selectedId > 0 ? selectedId - 1 : -1;
-        if (juce::isPositiveAndBelow (idx, filteredOutputIndices_.size()))
-            bridgeEngine_.startLtcOutput (outputChoices_[filteredOutputIndices_[idx]],
-                                          comboChannelIndex (ltcOutChannelCombo_),
-                                          comboSampleRate (ltcOutSampleRateCombo_),
-                                          0,
-                                          err);
-    }
+    queueLtcOutputApply();
 
     if (mtcOutCombo_.getNumItems() > 0)
         bridgeEngine_.startMtcOutput (mtcOutCombo_.getSelectedItemIndex(), err);
@@ -1319,7 +1394,6 @@ void MainContentComponent::onOutputSettingsChanged()
                                          collectArtnetTargets(),
                                          err);
 
-    bridgeEngine_.setLtcOutputEnabled (ltcOutSwitch_.getState());
     bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
 
