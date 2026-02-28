@@ -50,10 +50,6 @@ private:
     juce::String addrFloat_ { "/time" };
     juce::String bindIp_ { "0.0.0.0" };
     std::unique_ptr<juce::DatagramSocket> socket_;
-
-    juce::File debugLog_;
-    bool debugEnabled_ { false };
-    double lastDebugPacketTsMs_ { 0.0 };
 };
 } // namespace bridge::engine
 
