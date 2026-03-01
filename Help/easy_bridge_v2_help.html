@@ -3,387 +3,359 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Easy Bridge v2 - Full UI Guide</title>
+  <title>Easy Bridge – Help</title>
   <style>
     :root {
-      --bg: #242628;
-      --bg-soft: #2a2d30;
-      --panel: #31353a;
-      --panel-2: #2d3136;
-      --line: #4a525c;
-      --text: #edf1f5;
-      --muted: #c3ccd7;
-      --accent: #67d47b;
-      --accent2: #72c7ff;
-      --danger: #ff6b6b;
+      --bg:      #1e2024;
+      --panel:   #26292e;
+      --panel2:  #2c3036;
+      --row:     #31363c;
+      --line:    #42494f;
+      --text:    #e8e8e8;
+      --muted:   #a8b0bb;
+      --green:   #51c87b;
+      --orange:  #de9b3c;
+      --red:     #ec483c;
+      --blue:    #72c7ff;
+      --accent:  #51c87b;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      background: linear-gradient(180deg, #2a2d30 0%, var(--bg) 100%);
-      line-height: 1.45;
-      padding: 18px;
+      font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
 
-    .page {
-      max-width: 1320px;
-      margin: 0 auto;
+    /* ─── Layout ─────────────────────────────────────── */
+    .layout {
       display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
-      gap: 14px;
-      align-items: start;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 100vh;
     }
-
     .sidebar {
       position: sticky;
-      top: 14px;
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--panel2);
+      border-right: 1px solid var(--line);
+      padding: 20px 12px;
     }
-    .sidebar h2 {
-      margin: 0 0 8px;
-      font-size: 16px;
-      color: var(--text);
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      padding-left: 4px;
     }
-    .nav {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .nav li + li { margin-top: 6px; }
+    .nav { list-style: none; }
+    .nav li + li { margin-top: 2px; }
     .nav a {
       display: block;
-      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 7px;
       color: var(--muted);
-      background: #353a40;
-      border: 1px solid #4c545e;
-      border-radius: 8px;
-      padding: 7px 9px;
+      text-decoration: none;
       font-size: 13px;
+      transition: background .12s, color .12s;
     }
-    .nav a:hover {
-      color: var(--text);
-      border-color: #6a7685;
-      background: #3b4148;
-    }
+    .nav a:hover { background: var(--row); color: var(--text); }
+    .nav .sub { padding-left: 20px; font-size: 12px; }
 
-    .main section,
+    .content { padding: 32px 28px 60px; max-width: 860px; }
+
+    /* ─── Typography ─────────────────────────────────── */
+    h1 { font-size: 26px; margin-bottom: 6px; }
+    h2 { font-size: 19px; color: var(--accent); margin: 36px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+    h3 { font-size: 15px; color: var(--blue); margin: 18px 0 6px; }
+    p  { color: var(--muted); margin-bottom: 8px; }
+    ul { color: var(--muted); padding-left: 18px; margin-bottom: 8px; }
+    li { margin: 4px 0; }
+    b  { color: var(--text); }
+
+    /* ─── Hero ───────────────────────────────────────── */
     .hero {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
+      padding: 20px 22px;
+      margin-bottom: 28px;
     }
-    .hero h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
-    .hero p {
-      margin: 6px 0;
-      color: var(--muted);
-    }
+    .hero .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .hero .desc { margin-top: 10px; color: var(--muted); line-height: 1.6; }
 
-    section h2 {
-      margin: 0 0 6px;
-      font-size: 24px;
-      color: var(--accent);
-    }
-    .section-desc {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .item {
-      margin-top: 10px;
-      background: #2e3339;
-      border: 1px solid #4a5360;
-      border-radius: 10px;
-      padding: 9px;
-      display: grid;
-      grid-template-columns: minmax(260px, 1fr) 320px;
-      gap: 10px;
-      align-items: start;
-    }
-
-    .desc h3 {
-      margin: 0 0 6px;
-      color: var(--accent2);
-      font-size: 20px;
-    }
-    .desc p {
-      margin: 0 0 6px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .desc ul {
-      margin: 6px 0 0 18px;
-      color: var(--muted);
-    }
-    .desc li { margin: 3px 0; }
-
-    figure {
-      margin: 0;
-      background: #343941;
-      border: 1px solid #515b68;
-      border-radius: 8px;
-      padding: 5px;
+    /* ─── Field table ────────────────────────────────── */
+    .fields {
       width: 100%;
-      max-width: 320px;
-      justify-self: end;
+      border-collapse: collapse;
+      margin: 10px 0 18px;
+      font-size: 13px;
     }
-    img {
-      width: 100%;
-      max-width: 308px;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-      border-radius: 4px;
-      border: 1px solid #5a6575;
-      background: #24282d;
+    .fields th {
+      background: var(--panel2);
+      color: var(--muted);
+      font-weight: 600;
+      text-align: left;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
     }
-    figcaption {
-      margin-top: 5px;
-      color: #d2dbe6;
-      font-size: 12px;
+    .fields td {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      color: var(--muted);
     }
+    .fields tr:nth-child(odd) td  { background: var(--panel); }
+    .fields tr:nth-child(even) td { background: var(--panel2); }
+    .fields td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
 
     code {
-      background: #3b4048;
-      border: 1px solid #58606c;
-      border-radius: 5px;
+      background: var(--row);
+      border: 1px solid var(--line);
+      border-radius: 4px;
       padding: 1px 5px;
-      color: #f7f9fc;
       font-size: .9em;
+      color: #d7e4ff;
     }
-    .danger { color: var(--danger); font-weight: 700; }
+    .ok   { color: var(--green);  font-weight: 700; }
+    .warn { color: var(--orange); font-weight: 700; }
+    .bad  { color: var(--red);    font-weight: 700; }
+    .note {
+      background: #2a2e1e;
+      border-left: 3px solid var(--orange);
+      border-radius: 0 6px 6px 0;
+      padding: 8px 12px;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-    @media (max-width: 1100px) {
-      .page { grid-template-columns: 1fr; }
-      .sidebar { position: static; }
-    }
-    @media (max-width: 860px) {
-      .item { grid-template-columns: 1fr; }
-      figure { justify-self: start; max-width: 100%; }
-      img { max-width: 100%; }
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+      .content { padding: 20px 16px 40px; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <aside class="sidebar">
-      <h2>Page Contents</h2>
-      <ul class="nav">
-        <li><a href="#general">General</a></li>
-        <li><a href="#input-source">Input Source</a></li>
-        <li><a href="#ltc">Input LTC</a></li>
-        <li><a href="#mtc">Input MTC</a></li>
-        <li><a href="#artnet">Input ArtNet</a></li>
-        <li><a href="#osc">Input OSC</a></li>
-        <li><a href="#out-ltc">Out LTC</a></li>
-        <li><a href="#out-mtc">Out MTC</a></li>
-        <li><a href="#out-artnet">Out ArtNet</a></li>
-        <li><a href="#status-bar">Status Bar</a></li>
-        <li><a href="#troubleshooting">Troubleshooting</a></li>
-      </ul>
-    </aside>
+<div class="layout">
 
-    <main class="main">
-      <section class="hero" id="general">
-        <h1>Easy Bridge v2 - Full UI Guide</h1>
-        <p>Easy Bridge converts one incoming timecode source into up to three simultaneous outputs: <code>Out LTC</code>, <code>Out MTC</code>, and <code>Out ArtNet</code>.</p>
-        <p>This guide is organized by category. Text is on the left, image is on the right.</p>
-        <p><b>Important setup notes:</b> If MIDI ports are missing, install <code>python-rtmidi</code>. On Windows LTC workflows, ASIO is used for devices like ReaRoute (Reaper). For Art-Net output, ensure UDP port <code>6454</code> is allowed by firewall.</p>
+  <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
+  <nav class="sidebar">
+    <div class="sidebar-title">Contents</div>
+    <ul class="nav">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#header">Header</a></li>
+      <li><a href="#clock">Timecode Clock</a></li>
+      <li><a href="#source">Input Source</a></li>
+      <li><a href="#ltc-in">Input LTC</a></li>
+      <li><a href="#mtc-in">Input MTC</a></li>
+      <li><a href="#artnet-in">Input ArtNet</a></li>
+      <li><a href="#osc-in">Input OSC</a></li>
+      <li><a href="#ltc-out">Output LTC</a></li>
+      <li><a href="#mtc-out">Output MTC</a></li>
+      <li><a href="#artnet-out">Output ArtNet</a></li>
+      <li><a href="#status">Status Bar</a></li>
+      <li><a href="#status-monitor">Status Monitor</a></li>
+      <li><a href="#settings">Settings Menu</a></li>
+      <li><a href="#tray">System Tray</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+  </nav>
 
-        <article class="item">
-          <div class="desc">
-            <h3>Header (App name, version, Help button)</h3>
-            <ul>
-              <li>Version is shown in header (example: <code>v2.1.1</code>).</li>
-              <li><code>?</code> opens this help page.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/to-crop_0011_Header.png" alt="Header row" /><figcaption>Header row.</figcaption></figure>
-        </article>
+  <!-- ═══ CONTENT ═══════════════════════════════════════════════════════ -->
+  <main class="content">
 
-        <article class="item">
-          <div class="desc">
-            <h3>Main Timecode Clock</h3>
-            <ul>
-              <li>Shows decoded timecode in real time.</li>
-              <li>If no valid signal is present, it stays at zero.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/to-crop_0012_Timer.png" alt="Main timecode clock" /><figcaption>Clock row.</figcaption></figure>
-        </article>
-      </section>
+    <!-- HERO -->
+    <div class="hero">
+      <h1>Easy Bridge</h1>
+      <div class="subtitle">Timecode Protocol Bridge – User Guide</div>
+      <div class="desc">
+        Easy Bridge receives a timecode signal from one source (LTC audio, MTC MIDI, Art-Net, or OSC)
+        and simultaneously re-transmits it as up to three outputs: <b>LTC audio</b>, <b>MTC MIDI</b>,
+        and <b>Art-Net timecode</b>. Each output can be independently enabled, offset, and configured.
+        The app runs as a background process and can minimise to the system tray.
+      </div>
+    </div>
 
-      <section id="input-source">
-        <h2>Input Source</h2>
-        <p class="section-desc">This category selects which protocol is currently used as the incoming timecode source.</p>
-        <article class="item">
-          <div class="desc"><h3>Source Selector</h3><p>Select active input protocol: LTC, MTC, Art-Net, or OSC.</p></div>
-          <figure><img src="UI/to-crop_0000_MTC-In.png" alt="Source selector" /><figcaption>Source row.</figcaption></figure>
-        </article>
-      </section>
+    <!-- ── HEADER ──────────────────────────────────────────────────────── -->
+    <h2 id="header">Header</h2>
+    <p>The top bar of the window. Contains the app name, current version number, and the Help button.</p>
+    <table class="fields">
+      <tr><th>Element</th><th>Description</th></tr>
+      <tr><td>EASY BRIDGE</td><td>Application title. The two words use different text colours to distinguish brand from product name.</td></tr>
+      <tr><td>Version label</td><td>Shows the current version (e.g. <code>v2.5.8</code>) in small text below the title.</td></tr>
+      <tr><td><code>?</code> button</td><td>Opens this help file in the system default browser. The file is located in the <code>Help/</code> folder next to the application executable.</td></tr>
+    </table>
 
-      <section id="ltc">
-        <h2>Input LTC</h2>
-        <p class="section-desc">Rows used when <code>LTC</code> is selected as the source.</p>
-        <article class="item"><div class="desc"><h3>LTC Source</h3><p>Select LTC as the input timecode source.</p></div><figure><img src="UI/to-crop_0013_LTC-Source.png" alt="LTC source" /><figcaption>LTC source row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>LTC Driver</h3><p>Chooses audio host API for LTC input.</p></div><figure><img src="UI/to-crop_0014_LTC-IN-Driver.png" alt="LTC driver" /><figcaption>Driver row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>LTC Device (Input)</h3><p>Selects input audio device carrying LTC signal.</p></div><figure><img src="UI/to-crop_0015_LTC-IN-Device-In.png" alt="LTC input device" /><figcaption>Device (input) row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>LTC Channel</h3><p>Selects channel used for LTC decode.</p></div><figure><img src="UI/to-crop_0016_LTC-IN-Channel.png" alt="LTC channel" /><figcaption>Channel row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>LTC Sample Rate</h3><p>Sets decode sample rate; keep it matched with source setup.</p></div><figure><img src="UI/to-crop_0017_LTC-IN-Sample-Rate.png" alt="LTC sample rate" /><figcaption>Sample rate row.</figcaption></figure></article>
-        <article class="item">
-          <div class="desc">
-            <h3>LTC Level</h3>
-            <p>Input level meter shows the strength of the LTC audio signal in real time. When the source is sending valid LTC, the green bar fills according to the input level.</p>
-            <ul>
-              <li>The meter has a dark background (same style as the dropdown fields) so the bar is easy to read.</li>
-              <li>If the bar stays empty, check device selection, sample rate, and that the source is actually outputting LTC.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/to-crop_0018_LTC-IN-Levl.png" alt="Level meter" /><figcaption>Level meter row.</figcaption></figure>
-        </article>
-        <article class="item">
-          <div class="desc">
-            <h3>Input Gain</h3>
-            <p>Slider to adjust the input gain in dB (typically from −24 to +24 dB). Use it to match the LTC source level so the decoder receives a stable signal.</p>
-            <ul>
-              <li>The value is shown next to the slider (e.g. <code>0 dB</code>). Double‑click the slider to reset to 0 dB.</li>
-              <li>Keep the Level meter in a healthy range (not clipping, not too low) for reliable timecode.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/to-crop_0019_LTC-IN-Gane.png" alt="Input gain slider" /><figcaption>Input gain row.</figcaption></figure>
-        </article>
-      </section>
+    <!-- ── CLOCK ──────────────────────────────────────────────────────── -->
+    <h2 id="clock">Timecode Clock</h2>
+    <p>The large central display showing the decoded timecode in <code>HH:MM:SS:FF</code> format. Updated in real time as frames arrive from the active input source.</p>
+    <table class="fields">
+      <tr><th>Element</th><th>Description</th></tr>
+      <tr><td>Clock display</td><td>Shows the current timecode position. Stays at <code>00:00:00:00</code> when no valid signal is detected. The font is monospaced for stable digit width.</td></tr>
+      <tr><td>TC FPS label</td><td>Displayed below the clock. Shows the detected or configured frame rate (e.g. <code>TC FPS: 25</code>). Updates as the frame rate is identified from the incoming stream.</td></tr>
+    </table>
 
-      <section id="mtc">
-        <h2>Input MTC</h2>
-        <p class="section-desc">Rows used when <code>MTC</code> is selected as the source.</p>
-        <article class="item"><div class="desc"><h3>MTC Source</h3><p>Choose MTC in source dropdown.</p></div><figure><img src="UI/to-crop_0000_MTC-In.png" alt="MTC source" /><figcaption>MTC source row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>MTC MIDI Input</h3><p>Select MIDI input port with incoming MTC.</p></div><figure><img src="UI/to-crop_0001_MTC-Midi-In.png" alt="MTC input" /><figcaption>MIDI input row.</figcaption></figure></article>
-      </section>
+    <!-- ── INPUT SOURCE ───────────────────────────────────────────────── -->
+    <h2 id="source">Input Source</h2>
+    <p>A collapsible section that selects which timecode protocol is used as the active input. The expand/collapse arrow on the left toggles the visibility of all input rows to save screen space.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Source selector</td><td>Dropdown to choose the active input protocol: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, or <b>OSC</b>. Only the rows relevant to the selected source are used; the others are ignored.</td></tr>
+    </table>
+    <p>Switching the source immediately stops the previous listener and starts the new one. All output streams continue without interruption.</p>
 
-      <section id="artnet">
-        <h2>Input ArtNet</h2>
-        <p class="section-desc">Rows used when <code>Art-Net</code> is selected as the source.</p>
-        <article class="item"><div class="desc"><h3>Art-Net Source</h3><p>Choose Art-Net in source dropdown.</p></div><figure><img src="UI/to-crop_0002_ArtNet-In.png" alt="Art-Net source" /><figcaption>Art-Net source row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Art-Net Adapter</h3><p>Select local network adapter for listening.</p></div><figure><img src="UI/to-crop_0003_ArtNet-In-Adapter.png" alt="Art-Net adapter" /><figcaption>Adapter row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Art-Net Listen IP</h3><p>Set bind IP, usually <code>0.0.0.0</code> for all interfaces.</p></div><figure><img src="UI/to-crop_0004_ArtNet-In-IP.png" alt="Art-Net listen IP" /><figcaption>Listen IP row.</figcaption></figure></article>
-      </section>
+    <!-- ── INPUT LTC ──────────────────────────────────────────────────── -->
+    <h2 id="ltc-in">Input LTC</h2>
+    <p>Available when <b>LTC</b> is selected as the source. LTC (Linear Timecode) is encoded as an audio signal. The decoder listens on a selected audio input device and channel.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Driver</td><td>Selects the audio host API. Options depend on the operating system: <b>WASAPI</b> / <b>DirectSound</b> on Windows, <b>CoreAudio</b> on macOS. Selecting <b>Default (all devices)</b> lists every device regardless of driver. Use <b>ASIO</b> if you need ReaRoute or other ASIO devices (requires ASIO SDK build).</td></tr>
+      <tr><td>Device (Input)</td><td>The audio input device that carries the LTC signal. The list is filtered by the selected driver. Choose the device that is physically connected to your LTC source.</td></tr>
+      <tr><td>Channel</td><td>Which channel of the input device to decode. Options: 1–8 and <code>1+2</code> (stereo mix of channels 1 and 2). Most LTC setups use a single mono channel.</td></tr>
+      <tr><td>Sample Rate</td><td>The sample rate for the audio capture. Set to <b>Default</b> to use the device's current rate, or choose a specific rate (44100, 48000, 88200, 96000, 176400, 192000). Must match the device's configured rate.</td></tr>
+      <tr><td>Level meter</td><td>Horizontal bar showing the real-time input signal strength. A healthy LTC signal should have a consistent, moderate level — not silent and not clipping. If the bar is empty, check device/channel selection and verify that the source is transmitting.</td></tr>
+      <tr><td>Input Gain</td><td>Adjusts the input gain from <code>−24 dB</code> to <code>+24 dB</code> in 0.1 dB steps. The current value is shown to the right of the slider. Double-click the slider to reset it to 0 dB. Use this to normalise weak or overly hot LTC signals before decoding.</td></tr>
+    </table>
+    <div class="note">On Windows, ASIO (e.g. ReaRoute from Reaper) gives the lowest latency. WASAPI Exclusive and ASIO are preferred for reliable LTC decode over DirectSound.</div>
 
-      <section id="osc">
-        <h2>Input OSC</h2>
-        <p class="section-desc">Rows used when <code>OSC</code> is selected as the source.</p>
-        <article class="item"><div class="desc"><h3>OSC Source</h3><p>Choose OSC in source dropdown.</p></div><figure><img src="UI/to-crop_0005_OSC-In.png" alt="OSC source" /><figcaption>OSC source row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>OSC Adapter</h3><p>Select local adapter for OSC listener.</p></div><figure><img src="UI/to-crop_0006_OSC-In-Adapter.png" alt="OSC adapter" /><figcaption>OSC adapter row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>OSC Listen IP</h3><p>Set OSC bind IP address.</p></div><figure><img src="UI/to-crop_0007_OSC-In-IP.png" alt="OSC listen IP" /><figcaption>OSC listen IP row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>OSC Port</h3><p>UDP port used for incoming OSC time messages.</p></div><figure><img src="UI/to-crop_0008_OSC-In-Oprt.png" alt="OSC port" /><figcaption>OSC port row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>OSC FPS</h3><p>Frame-rate interpretation for incoming OSC values.</p></div><figure><img src="UI/to-crop_0009_OSC-In-Rate.png" alt="OSC FPS" /><figcaption>OSC FPS row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>OSC Commands</h3><p>Address mapping for OSC time fields. The default examples are Reaper OSC commands, but for any other DAW you can find and assign equivalent OSC paths.</p></div><figure><img src="UI/to-crop_0010_OSC-In-Commands.png" alt="OSC commands" /><figcaption>OSC command row.</figcaption></figure></article>
-      </section>
+    <!-- ── INPUT MTC ──────────────────────────────────────────────────── -->
+    <h2 id="mtc-in">Input MTC</h2>
+    <p>Available when <b>MTC</b> is selected as the source. MTC (MIDI Timecode) is received over a standard MIDI port.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>MIDI Input</td><td>Dropdown listing all available MIDI input ports. Select the port that is sending MTC messages. Virtual ports (e.g. from DAWs) also appear here. If no ports are listed, ensure a MIDI driver is installed.</td></tr>
+    </table>
 
-      <section id="out-ltc">
-        <h2>Out LTC</h2>
-        <p class="section-desc">Rows that control LTC output transmission.</p>
-        <article class="item"><div class="desc"><h3>Out LTC</h3><p>Enable LTC output stream.</p></div><figure><img src="UI/to-crop_0020_OUT-LTC.png" alt="Out LTC" /><figcaption>Out LTC master row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Driver</h3><p>Chooses audio host API for LTC output.</p></div><figure><img src="UI/to-crop_0021_OUT-LTC-Drive.png" alt="Out LTC driver" /><figcaption>Out LTC driver row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Device</h3><p>Select output audio device for LTC transmission.</p></div><figure><img src="UI/to-crop_0022_OUT-LTC-Device.png" alt="LTC device out" /><figcaption>LTC output device row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Channel</h3><p>Selects channel used for LTC output.</p></div><figure><img src="UI/to-crop_0023_OUT-LTC-Channel.png" alt="Out LTC channel" /><figcaption>Out LTC channel row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Sample Rate</h3><p>Sets output sample rate; keep it matched with the target device setup.</p></div><figure><img src="UI/to-crop_0024_OUT-LTC-Rate.png" alt="Out LTC sample rate" /><figcaption>Out LTC sample rate row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Offset</h3><p>Frame offset compensation for LTC output.</p></div><figure><img src="UI/to-crop_0025_OUT-LTC-Offcet.png" alt="LTC offset" /><figcaption>LTC offset row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Out LTC Level</h3><p>Output level control for the LTC audio signal.</p></div><figure><img src="UI/to-crop_0026_OUT-LTC-Level.png" alt="Out LTC level" /><figcaption>Out LTC level row.</figcaption></figure></article>
-      </section>
+    <!-- ── INPUT ARTNET ───────────────────────────────────────────────── -->
+    <h2 id="artnet-in">Input ArtNet</h2>
+    <p>Available when <b>ArtNet</b> is selected as the source. Listens for Art-Net Timecode packets over UDP on port 6454.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Adapter</td><td>Selects the local network interface to listen on. Choose the interface connected to your Art-Net network. <b>ALL INTERFACES</b> listens on all adapters simultaneously (binds to <code>0.0.0.0</code>).</td></tr>
+      <tr><td>Listen IP</td><td>Displays or overrides the bind IP address derived from the selected adapter. Normally auto-filled from the adapter selection. For manual entry use dotted-decimal notation (e.g. <code>192.168.1.10</code>). Use <code>0.0.0.0</code> for all interfaces.</td></tr>
+    </table>
+    <div class="note">Ensure UDP port <code>6454</code> is allowed by the firewall on the listening machine.</div>
 
-      <section id="out-mtc">
-        <h2>Out MTC</h2>
-        <p class="section-desc">Rows that control MTC output transmission.</p>
-        <article class="item"><div class="desc"><h3>Out MTC</h3><p>Enable MTC output stream.</p></div><figure><img src="UI/to-crop_0027_MTC-Out.png" alt="Out MTC" /><figcaption>Out MTC master row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>MIDI Output</h3><p>Select destination MIDI port for MTC transmission.</p></div><figure><img src="UI/to-crop_0028_MTC-Out-Midi-Out.png" alt="MIDI out params" /><figcaption>MIDI out params row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>MTC Offset</h3><p>Frame offset compensation for MTC output.</p></div><figure><img src="UI/to-crop_0029_MTC-Out-Offcet.png" alt="MTC offset" /><figcaption>MTC offset row.</figcaption></figure></article>
-      </section>
+    <!-- ── INPUT OSC ──────────────────────────────────────────────────── -->
+    <h2 id="osc-in">Input OSC</h2>
+    <p>Available when <b>OSC</b> is selected as the source. Receives timecode values over UDP via Open Sound Control messages. Compatible with Reaper and other DAWs that broadcast OSC position data.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Adapter</td><td>Selects the local network interface to bind the OSC listener. <b>ALL INTERFACES (0.0.0.0)</b> or <b>Loopback (127.0.0.1)</b> for same-machine DAW use.</td></tr>
+      <tr><td>Listen IP</td><td>The IP address the OSC listener binds to. Auto-filled from the adapter. Can be overridden manually.</td></tr>
+      <tr><td>Port</td><td>UDP port number to receive OSC messages. Default is <code>9000</code>. Must match the port configured in the sending application. Accepts digits only, 1–65535.</td></tr>
+      <tr><td>FPS</td><td>Frame rate used to interpret incoming OSC float values. Options: <b>24, 25, 29.97, 30</b>. Set this to match the project frame rate in your DAW.</td></tr>
+      <tr><td>String address</td><td>OSC address pattern for string timecode messages (e.g. <code>/frames/str</code>). Expected format: <code>HH:MM:SS:FF</code> or <code>HH:MM:SS.FF</code>. Default is the Reaper string position path.</td></tr>
+      <tr><td>Float address</td><td>OSC address pattern for numeric position messages (e.g. <code>/time</code>). The float value is interpreted as seconds at the configured FPS. Default is the Reaper position float path.</td></tr>
+    </table>
 
-      <section id="out-artnet">
-        <h2>Out ArtNet</h2>
-        <p class="section-desc">Rows that control Art-Net output transmission.</p>
-        <article class="item"><div class="desc"><h3>Out ArtNet</h3><p>Enable Art-Net timecode output.</p></div><figure><img src="UI/to-crop_0030_Out-Artnet.png" alt="Out ArtNet" /><figcaption>Out ArtNet master row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Art-Net Output Interface</h3><p>Select network interface for outgoing Art-Net packets.</p></div><figure><img src="UI/to-crop_0031_Out-Artnet-interface.png" alt="ArtNet interface" /><figcaption>Art-Net interface row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Art-Net Destination IP</h3><p>Set destination IP addresses (broadcast/unicast).</p></div><figure><img src="UI/to-crop_0032_Out-Artnet-Destination-Ip.png" alt="ArtNet out IP" /><figcaption>Out IP row.</figcaption></figure></article>
-        <article class="item"><div class="desc"><h3>Art-Net Offset</h3><p>Frame offset compensation for Art-Net output.</p></div><figure><img src="UI/to-crop_0033_Out-Artnet-Offcet.png" alt="Art-Net offset" /><figcaption>Art-Net offset row.</figcaption></figure></article>
-      </section>
+    <!-- ── OUTPUT LTC ─────────────────────────────────────────────────── -->
+    <h2 id="ltc-out">Output LTC</h2>
+    <p>Generates an LTC audio signal from the decoded timecode and sends it to a selected audio output device.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Out LTC toggle</td><td>Enable or disable the LTC output stream. The section header row acts as the on/off switch. When disabled, no audio is sent to the output device.</td></tr>
+      <tr><td>Thru indicator</td><td>A small dot in the section header. Lights up when LTC frames are actively being written to the audio buffer. Use it to confirm the output is running.</td></tr>
+      <tr><td>Driver</td><td>Selects the audio host API for output (same options as Input Driver). ASIO is preferred for lowest latency.</td></tr>
+      <tr><td>Device (Output)</td><td>The audio output device to carry the LTC signal. Choose the device that connects to your downstream system.</td></tr>
+      <tr><td>Channel</td><td>Output channel to write the LTC signal to. Options: 1–8 and <code>1+2</code> (duplicated to both channels). Use <code>1+2</code> if your downstream device requires a stereo feed.</td></tr>
+      <tr><td>Sample Rate</td><td>Output sample rate. Must match the device's configured rate. Mismatched rates cause pitch-shifted or garbled LTC.</td></tr>
+      <tr><td>Offset</td><td>Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Use it to compensate for downstream decoding latency. Positive = advance; Negative = delay.</td></tr>
+      <tr><td>Level</td><td>Output level in dB, range <code>−24 dB</code> to <code>+24 dB</code>. Sets the amplitude of the generated LTC audio signal. Double-click to reset to 0 dB. Adjust to match your device's expected input level.</td></tr>
+    </table>
 
-      <section id="status-bar">
-        <h2>Status Bar</h2>
-        <p class="section-desc">Bottom area for runtime state and control buttons.</p>
-        <article class="item">
-          <div class="desc">
-            <h3>Status Line</h3>
-            <ul>
-              <li><span class="danger">STOPPED</span> means no valid timecode or invalid configuration.</li>
-              <li>Read this line first when diagnosing input/output problems.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/to-crop_0034_Status-_Ar.png" alt="Status bar" /><figcaption>Status bar row.</figcaption></figure>
-        </article>
-        <article class="item">
-          <div class="desc">
-            <h3>Status Details Window (click status bar)</h3>
-            <p>Clicking the status bar opens a details popup with real-time diagnostic values.</p>
-            <ul>
-              <li><code>Input Timecode</code>: currently received timecode.</li>
-              <li><code>FPS</code>: active frame-rate interpretation.</li>
-              <li><code>LTC Output</code>, <code>MTC Output</code>, <code>ArtNet Output</code>: per-output offset display.</li>
-              <li><code>Processing Latency</code>: internal processing delay in milliseconds and frames.</li>
-            </ul>
-          </div>
-          <figure><img src="UI/status window.png" alt="Status details window" /><figcaption>Status details popup opened from the status bar.</figcaption></figure>
-        </article>
-        <article class="item">
-          <div class="desc">
-            <h3>Settings Menu</h3>
-            <p>Clicking <code>Settings</code> opens a configuration menu popup. You can save the current setup to a config file, load a saved config file, and enable auto-load on startup.</p>
-          </div>
-          <figure><img src="UI/Menu.png" alt="Settings menu" /><figcaption>Settings menu popup.</figcaption></figure>
-        </article>
-        <article class="item">
-          <div class="desc">
-            <h3>Settings / Quit Buttons</h3>
-            <p><code>Settings</code> opens configuration management. You can save the current setup to a config file, load a saved config file, and enable auto-load on startup. <code>Quit</code> closes the app safely.</p>
-          </div>
-          <figure><img src="UI/to-crop_0035_Buttons.png" alt="Bottom buttons" /><figcaption>Buttons row.</figcaption></figure>
-        </article>
-      </section>
+    <!-- ── OUTPUT MTC ─────────────────────────────────────────────────── -->
+    <h2 id="mtc-out">Output MTC</h2>
+    <p>Re-transmits decoded timecode as MIDI Timecode messages to a MIDI output port.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Out MTC toggle</td><td>Enable or disable MTC output. When disabled, no MIDI messages are sent.</td></tr>
+      <tr><td>Thru indicator</td><td>Dot in the section header that lights when MTC frames are actively being sent.</td></tr>
+      <tr><td>MIDI Output</td><td>Destination MIDI port for MTC messages. Select the port connected to the target device (hardware or virtual).</td></tr>
+      <tr><td>Offset</td><td>Frame offset applied to MTC output, range <code>−30</code> to <code>+30</code> frames. Compensates for MIDI routing latency.</td></tr>
+    </table>
 
-      <section id="troubleshooting">
-        <h2>Troubleshooting</h2>
-        <p class="section-desc">Common status-bar messages and what they mean.</p>
-        <article class="item">
-          <div class="desc">
-            <h3>Status Messages You May See</h3>
-            <ul>
-              <li><code>RUNNING - 24/25/29.97DF/30 FPS</code>: valid timecode is currently received.</li>
-              <li><code>STOPPED - no timecode</code>: input is active but no valid timecode is currently detected.</li>
-              <li><code>STOPPED - no MIDI input</code>: no MIDI input port is selected/available for MTC input.</li>
-              <li><code>STOPPED - invalid OSC port</code>: OSC port value is not a valid integer.</li>
-              <li><code>STOPPED - select LTC input</code>: LTC source selected but no LTC input device chosen.</li>
-              <li><code>STOPPED - LTC requires sounddevice+numpy</code>: LTC modules are missing.</li>
-              <li><code>STOPPED - ASIO driver failed to load (check x64 app + x64 ASIO/ReaRoute install)</code>: ASIO backend could not start.</li>
-              <li><code>STOPPED - &lt;error text&gt;</code>: runtime error returned by MIDI/LTC/OSC/Art-Net listeners.</li>
-            </ul>
-            <p>Tip: click the status bar to open the Status Details Window and inspect Input Timecode, FPS, output offsets, and processing latency.</p>
-          </div>
-          <figure><img src="UI/to-crop_0034_Status-_Ar.png" alt="Status bar troubleshooting" /><figcaption>Status bar is the first place to check when something does not work.</figcaption></figure>
-        </article>
-      </section>
-    </main>
-  </div>
+    <!-- ── OUTPUT ARTNET ──────────────────────────────────────────────── -->
+    <h2 id="artnet-out">Output ArtNet</h2>
+    <p>Broadcasts Art-Net Timecode packets over UDP to one or more IP addresses.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Out ArtNet toggle</td><td>Enable or disable Art-Net output.</td></tr>
+      <tr><td>Interface</td><td>Local network interface used for outgoing Art-Net packets. Choose the adapter on the same subnet as the destination devices.</td></tr>
+      <tr><td>Dest IP 1</td><td>Primary destination IP address. Use a broadcast address (e.g. <code>2.255.255.255</code> for Art-Net universe 0) or a specific unicast IP.</td></tr>
+      <tr><td>Dest IP 2–5</td><td>Additional destination IPs. Click the <code>+</code> button to add extra addresses (up to 4 extra). Click <code>−</code> to remove them. Each address receives the same Art-Net Timecode packet.</td></tr>
+      <tr><td>Offset</td><td>Frame offset applied to Art-Net output, range <code>−30</code> to <code>+30</code> frames.</td></tr>
+    </table>
+
+    <!-- ── STATUS BAR ─────────────────────────────────────────────────── -->
+    <h2 id="status">Status Bar</h2>
+    <p>The status button spans the bottom of the parameter area and shows the current operational state in text form. Click it to open the <a href="#status-monitor">Status Monitor</a> window.</p>
+    <table class="fields">
+      <tr><th>State</th><th>Meaning</th></tr>
+      <tr><td><span class="ok">RUNNING – 25 FPS</span></td><td>Timecode is being received and decoded at the indicated frame rate.</td></tr>
+      <tr><td><span class="bad">STOPPED</span></td><td>No valid timecode is currently detected, or a configuration error prevents the listener from starting.</td></tr>
+      <tr><td><span class="bad">STOPPED – no MIDI input</span></td><td>MTC source is selected but no MIDI input port has been chosen or is available.</td></tr>
+      <tr><td><span class="bad">STOPPED – select LTC input</span></td><td>LTC source is selected but no audio input device has been chosen.</td></tr>
+      <tr><td><span class="bad">STOPPED – invalid OSC port</span></td><td>The OSC port field does not contain a valid integer.</td></tr>
+      <tr><td><span class="bad">STOPPED – ASIO driver failed</span></td><td>The ASIO backend could not initialise. Check that a 64-bit ASIO driver (e.g. ReaRoute x64) is installed.</td></tr>
+    </table>
+
+    <!-- ── STATUS MONITOR ─────────────────────────────────────────────── -->
+    <h2 id="status-monitor">Status Monitor Window</h2>
+    <p>Opened by clicking the status button. Shows real-time diagnostic information in a compact floating panel.</p>
+    <table class="fields">
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Input Timecode</td><td>The raw timecode value currently being decoded, in <code>HH:MM:SS:FF</code> format.</td></tr>
+      <tr><td>FPS</td><td>The frame rate actively detected or configured for the current input source.</td></tr>
+      <tr><td>LTC Output</td><td>Indicates whether LTC output is active and shows its configured frame offset.</td></tr>
+      <tr><td>MTC Output</td><td>Indicates whether MTC output is active and shows its configured frame offset.</td></tr>
+      <tr><td>ArtNet Output</td><td>Indicates whether Art-Net output is active and shows its configured frame offset.</td></tr>
+      <tr><td>Processing Latency</td><td>Internal processing delay displayed in milliseconds and frames. Useful for diagnosing sync drift.</td></tr>
+    </table>
+
+    <!-- ── SETTINGS ───────────────────────────────────────────────────── -->
+    <h2 id="settings">Settings Menu</h2>
+    <p>Opened by clicking the <b>Settings</b> button at the bottom right. All configuration is stored in a single JSON file with a <code>.ebc</code> extension.</p>
+    <table class="fields">
+      <tr><th>Item</th><th>Description</th></tr>
+      <tr><td>Save config…</td><td>Opens a file save dialog. Writes the complete current configuration (all input, output, and UI settings) to a file you choose.</td></tr>
+      <tr><td>Load config…</td><td>Opens a file open dialog. Restores all settings from a previously saved config file. Audio and MIDI listeners restart automatically.</td></tr>
+      <tr><td>Reset config</td><td>Resets all settings to factory defaults without saving. The currently loaded file path is cleared.</td></tr>
+      <tr><td>Rescan audio devices</td><td>Re-enumerates audio devices in the background. Use this after connecting or disconnecting audio hardware, or after installing a new driver. Dropdowns are refreshed when the scan completes.</td></tr>
+      <tr><td>Load on startup</td><td>Toggle (checkbox). When enabled, the last saved/loaded config file is automatically loaded when the application starts. The setting itself is persisted to an internal preferences file.</td></tr>
+      <tr><td>Close to tray</td><td>Toggle (checkbox). When enabled, closing the main window minimises the app to the system tray instead of quitting it.</td></tr>
+    </table>
+
+    <!-- ── TRAY ───────────────────────────────────────────────────────── -->
+    <h2 id="tray">System Tray</h2>
+    <p>When <b>Close to tray</b> is enabled, the app icon appears in the system tray after the window is closed.</p>
+    <table class="fields">
+      <tr><th>Action</th><th>Description</th></tr>
+      <tr><td>Left-click tray icon</td><td>Restores the main window.</td></tr>
+      <tr><td>Right-click tray icon → Show</td><td>Brings the window to the foreground.</td></tr>
+      <tr><td>Right-click tray icon → Quit</td><td>Terminates the application.</td></tr>
+    </table>
+
+    <!-- ── TROUBLESHOOTING ────────────────────────────────────────────── -->
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <table class="fields">
+      <tr><th>Problem</th><th>What to check</th></tr>
+      <tr><td>Status stays STOPPED with LTC</td><td>Verify the correct input device and channel are selected. Check the Level meter — if it is empty, no audio is reaching the device. Adjust Input Gain if the signal is too weak. Confirm sample rate matches the device.</td></tr>
+      <tr><td>No MIDI ports listed</td><td>Install or reinstall your MIDI driver. On macOS the built-in IAC driver can be enabled in Audio MIDI Setup. On Windows use loopMIDI for virtual ports.</td></tr>
+      <tr><td>Art-Net not received</td><td>Check firewall rules for UDP port <code>6454</code>. Make sure the Listen IP matches the adapter connected to the Art-Net network.</td></tr>
+      <tr><td>OSC not received</td><td>Verify the Port matches the sender. Check the adapter / Listen IP setting. If sender and receiver are on the same machine, use <code>127.0.0.1</code>.</td></tr>
+      <tr><td>LTC output sounds distorted</td><td>Reduce the Output Level slider. The LTC signal should be clean; clipping causes decode failures downstream.</td></tr>
+      <tr><td>Sync drift between outputs</td><td>Use the Offset sliders on each output to compensate for downstream latency. Check Processing Latency in the Status Monitor window.</td></tr>
+      <tr><td>ASIO driver failed to load</td><td>Ensure you are running the 64-bit build of Easy Bridge and that a 64-bit ASIO driver is installed (e.g. ReaRoute x64 from Reaper).</td></tr>
+      <tr><td>Audio devices missing after reconnect</td><td>Use <b>Settings → Rescan audio devices</b> to refresh the device lists.</td></tr>
+    </table>
+
+  </main>
+</div>
 </body>
 </html>
