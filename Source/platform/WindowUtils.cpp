@@ -49,7 +49,15 @@ juce::Image loadBridgeAppIcon()
     if (! base.exists())
         return {};
 
+#if JUCE_WINDOWS
+    auto iconFile = base.getChildFile ("Icons/Icon Bridge.ico");
+#elif JUCE_MAC
+    auto iconFile = base.getChildFile ("Icons/Icon Bridge.icns");
+#else
     auto iconFile = base.getChildFile ("Icons/App_Icon.png");
+#endif
+    if (! iconFile.existsAsFile())
+        iconFile = base.getChildFile ("Icons/App_Icon.png");
     if (! iconFile.existsAsFile())
         return {};
 

@@ -4,5 +4,5 @@
 // To change the version, update project(... VERSION X.Y.Z) in CMakeLists.txt.
 namespace bridge::version
 {
-inline constexpr const char* kAppVersion = "2.4.13";
+inline constexpr const char* kAppVersion = "2.5.8";
 }

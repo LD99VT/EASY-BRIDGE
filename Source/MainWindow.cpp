@@ -322,7 +322,7 @@ MainContentComponent::MainContentComponent()
 
     titleEasyLabel_.setText ("EASY ", juce::dontSendNotification);
     titleEasyLabel_.setJustificationType (juce::Justification::centredLeft);
-    titleEasyLabel_.setColour (juce::Label::textColourId, juce::Colours::white);
+    titleEasyLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xce, 0xce, 0xce));
     titleEasyLabel_.setFont ((titleEasyFont_.getHeight() > 0.0f ? titleEasyFont_ : juce::Font()).withHeight (32.0f));
     addAndMakeVisible (titleEasyLabel_);
 
@@ -334,7 +334,7 @@ MainContentComponent::MainContentComponent()
 
     titleVersionLabel_.setText ("v" + juce::String (version::kAppVersion), juce::dontSendNotification);
     titleVersionLabel_.setJustificationType (juce::Justification::centredLeft);
-    titleVersionLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0x9a, 0xa1, 0xac));
+    titleVersionLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0x8a, 0x8a, 0x8a));
     titleVersionLabel_.setFont (juce::FontOptions (12.0f));
     addAndMakeVisible (titleVersionLabel_);
 
@@ -345,7 +345,7 @@ MainContentComponent::MainContentComponent()
     tcLabel_.setJustificationType (juce::Justification::centred);
     tcLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     tcLabel_.setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
-    tcLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (220, 216, 203));
+    tcLabel_.setColour (juce::Label::textColourId, juce::Colours::white);
     if (monoFont_.getHeight() > 0.0f)
         tcLabel_.setFont (monoFont_.withHeight (68.0f));
     addAndMakeVisible (tcLabel_);
@@ -356,15 +356,15 @@ MainContentComponent::MainContentComponent()
     statusButton_.setButtonText ("STOPPED");
     statusButton_.setColour (juce::TextButton::buttonColourId, kRow);
     statusButton_.setColour (juce::TextButton::buttonOnColourId, kRow);
-    statusButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (255, 120, 110));
-    statusButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (255, 120, 110));
+    statusButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+    statusButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     statusButton_.onClick = [this] { openStatusMonitorWindow(); };
     addAndMakeVisible (statusButton_);
 
     settingsButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
     settingsButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-    settingsButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
-    settingsButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+    settingsButton_.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    settingsButton_.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
     settingsButton_.onClick = [this] { openSettingsMenu(); };
     addAndMakeVisible (settingsButton_);
 
@@ -392,7 +392,7 @@ MainContentComponent::MainContentComponent()
     };
     rowsPanel_->addAndMakeVisible (sourceExpandBtn_);
     rowsPanel_->addAndMakeVisible (sourceCombo_);
-    sourceHeaderLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+    sourceHeaderLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
     sourceHeaderLabel_.setFont (juce::FontOptions (14.0f));
     sourceHeaderLabel_.setJustificationType (juce::Justification::centredLeft);
     sourceHeaderLabel_.setBorderSize (juce::BorderSize<int> (0, 6, 0, 0));
@@ -405,7 +405,7 @@ MainContentComponent::MainContentComponent()
     };
     for (auto* l : rowLabels)
     {
-        l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xba, 0xc5, 0xd6));
+        l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
         l->setJustificationType (juce::Justification::centredLeft);
         rowsPanel_->addAndMakeVisible (*l);
     }
@@ -478,7 +478,7 @@ MainContentComponent::MainContentComponent()
     for (auto* h : { &outLtcHeaderLabel_, &outMtcHeaderLabel_, &outArtHeaderLabel_ })
     {
         h->setColour (juce::Label::backgroundColourId, kSection);
-        h->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+        h->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
         h->setFont (juce::FontOptions (14.0f));
         h->setJustificationType (juce::Justification::centredLeft);
         h->setBorderSize (juce::BorderSize<int> (0, 42, 0, 0));
@@ -500,7 +500,7 @@ MainContentComponent::MainContentComponent()
         rowsPanel_->addAndMakeVisible (*c);
     for (auto* l : { &ltcThruLbl_, &mtcThruLbl_ })
     {
-        l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xd0, 0xd0, 0xd0));
+        l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
         l->setJustificationType (juce::Justification::centredLeft);
         rowsPanel_->addAndMakeVisible (*l);
     }
@@ -521,8 +521,8 @@ MainContentComponent::MainContentComponent()
     {
         artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
         artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
-        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
         artnetDestRemoveButtons_[i].onClick = [this, i]
         {
             const int idx = i + 1;
@@ -543,8 +543,8 @@ MainContentComponent::MainContentComponent()
     }
     artnetAddIpButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
     artnetAddIpButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-    artnetAddIpButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
-    artnetAddIpButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xdf, 0xe3, 0xea));
+    artnetAddIpButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
+    artnetAddIpButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     artnetAddIpButton_.onClick = [this]
     {
         if (artnetDestVisibleCount_ < (int) artnetDestIpEditors_.size())
@@ -757,16 +757,16 @@ void MainContentComponent::applyLookAndFeel()
 {
     lookAndFeel_ = std::make_unique<BridgeLookAndFeel>();
     lookAndFeel_->setColour (juce::ComboBox::backgroundColourId, kInput);
-    lookAndFeel_->setColour (juce::ComboBox::textColourId, juce::Colour::fromRGB (210, 220, 230));
+    lookAndFeel_->setColour (juce::ComboBox::textColourId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     lookAndFeel_->setColour (juce::ComboBox::outlineColourId, kRow);
     lookAndFeel_->setColour (juce::ComboBox::arrowColourId, juce::Colour::fromRGB (0x9a, 0xa1, 0xac));
 
     // Dropdown list style (close to PySide theme).
     lookAndFeel_->setColour (juce::PopupMenu::backgroundColourId, kInput);
-    lookAndFeel_->setColour (juce::PopupMenu::textColourId, juce::Colour::fromRGB (0xc0, 0xc0, 0xc0));
+    lookAndFeel_->setColour (juce::PopupMenu::textColourId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     lookAndFeel_->setColour (juce::PopupMenu::highlightedBackgroundColourId, kTeal);
     lookAndFeel_->setColour (juce::PopupMenu::highlightedTextColourId, juce::Colours::white);
-    lookAndFeel_->setColour (juce::PopupMenu::headerTextColourId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+    lookAndFeel_->setColour (juce::PopupMenu::headerTextColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
 
     // Scrollbar inside popup menu.
     lookAndFeel_->setColour (juce::ScrollBar::backgroundColourId, juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
@@ -774,7 +774,7 @@ void MainContentComponent::applyLookAndFeel()
     lookAndFeel_->setColour (juce::ScrollBar::trackColourId, juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
 
     lookAndFeel_->setColour (juce::TextEditor::backgroundColourId, kInput);
-    lookAndFeel_->setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (210, 220, 230));
+    lookAndFeel_->setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     lookAndFeel_->setColour (juce::TextEditor::outlineColourId, kRow);
     setLookAndFeel (lookAndFeel_.get());
     // Set as application-wide default so that PopupMenus (which create their own
@@ -1201,7 +1201,7 @@ void MainContentComponent::ltcOutputApplyLoop()
             juce::MessageManager::callAsync ([safeThis, err]
             {
                 if (safeThis != nullptr)
-                    safeThis->setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+                    safeThis->setStatusText (err, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
             });
         }
     }
@@ -1238,7 +1238,7 @@ void MainContentComponent::onOutputSettingsChanged()
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
 
     if (err.isNotEmpty())
-        setStatusText (err, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+        setStatusText (err, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
 }
 
 void MainContentComponent::onInputSettingsChanged()
@@ -1288,7 +1288,7 @@ void MainContentComponent::onInputSettingsChanged()
                                  : (activeSrc == 3) ? artErr
                                  :                    oscErr;
     if (activeErr.isNotEmpty())
-        setStatusText (activeErr, juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+        setStatusText (activeErr, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
 }
 
 void MainContentComponent::timerCallback()
@@ -1314,7 +1314,7 @@ void MainContentComponent::timerCallback()
         tcLabel_.setText (st.inputTc.toDisplayString (st.inputFps).replaceCharacter ('.', ':'), juce::dontSendNotification);
         tcFpsLabel_.setText ("TC FPS: " + frameRateToString (st.inputFps), juce::dontSendNotification);
         setStatusText ("RUNNING | LTC " + st.ltcOutStatus + " | MTC " + st.mtcOutStatus + " | ArtNet " + st.artnetOutStatus,
-                       juce::Colour::fromRGB (0x71, 0xd1, 0x7a));
+                       juce::Colour::fromRGB (0x51, 0xc8, 0x7b));
     }
     else
     {
@@ -1330,7 +1330,7 @@ void MainContentComponent::timerCallback()
         }
 
         if (statusButton_.getButtonText().startsWithIgnoreCase ("RUNNING"))
-            setStatusText ("STOPPED - no timecode", juce::Colour::fromRGB (255, 120, 110));
+            setStatusText ("STOPPED - no timecode", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     }
 }
 
@@ -1678,24 +1678,24 @@ void MainContentComponent::saveConfigToFile (const juce::File& cfgFile)
     {
         lastConfigFile_ = cfgFile;
         saveRuntimePrefs();
-        setStatusText ("STOPPED - config saved: " + cfgFile.getFileName(), juce::Colour::fromRGB (255, 120, 110));
+        setStatusText ("STOPPED - config saved: " + cfgFile.getFileName(), juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     }
     else
-        setStatusText ("STOPPED - failed to save config", juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+        setStatusText ("STOPPED - failed to save config", juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
 }
 
 void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
 {
     if (! cfgFile.existsAsFile())
     {
-        setStatusText ("STOPPED - config not found", juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+        setStatusText ("STOPPED - config not found", juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
         return;
     }
 
     const auto parsed = juce::JSON::parse (cfgFile);
     if (! parsed.isObject())
     {
-        setStatusText ("STOPPED - invalid config", juce::Colour::fromRGB (0xff, 0x9f, 0x43));
+        setStatusText ("STOPPED - invalid config", juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
         return;
     }
 
@@ -1777,7 +1777,7 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     resized();
     lastConfigFile_ = cfgFile;
     saveRuntimePrefs();
-    setStatusText ("STOPPED - config loaded: " + cfgFile.getFileName(), juce::Colour::fromRGB (255, 120, 110));
+    setStatusText ("STOPPED - config loaded: " + cfgFile.getFileName(), juce::Colour::fromRGB (0xec, 0x48, 0x3c));
 }
 
 juce::File MainContentComponent::prefsFilePath() const
@@ -1865,7 +1865,7 @@ void MainContentComponent::resetToDefaults()
     onOutputSettingsChanged();
     updateWindowHeight();
     resized();
-    setStatusText ("Config reset", juce::Colour::fromRGB (255, 120, 110));
+    setStatusText ("Config reset", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
 }
 
 void MainContentComponent::openSettingsMenu()
@@ -1893,20 +1893,20 @@ void MainContentComponent::openSettingsMenu()
                              case 6:
                                  safe->refreshDeviceLists();
                                  safe->setStatusText ("STOPPED - audio devices rescanned",
-                                                      juce::Colour::fromRGB (255, 120, 110));
+                                                      juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
                              case 4:
                                  safe->closeToTray_ = ! safe->closeToTray_;
                                  safe->saveRuntimePrefs();
                                  safe->setStatusText (safe->closeToTray_ ? "STOPPED - close to tray ON" : "STOPPED - close to tray OFF",
-                                                      juce::Colour::fromRGB (255, 120, 110));
+                                                      juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
                              case 5:
                                  safe->autoLoadOnStartup_ = ! safe->autoLoadOnStartup_;
                                  safe->saveRuntimePrefs();
                                  safe->setStatusText (safe->autoLoadOnStartup_ ? "STOPPED - load on startup ON"
                                                                                 : "STOPPED - load on startup OFF",
-                                                      juce::Colour::fromRGB (255, 120, 110));
+                                                      juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
                              default: break;
                          }

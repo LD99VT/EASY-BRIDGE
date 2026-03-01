@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MTC_Bridge_JUCE VERSION 2.4.13 LANGUAGES CXX)
+project(MTC_Bridge_JUCE VERSION 2.5.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,6 +30,14 @@ juce_add_gui_app(EasyBridge
   MICROPHONE_PERMISSION_TEXT "Easy Bridge requires audio input access for LTC input."
 )
 juce_generate_juce_header(EasyBridge)
+
+# macOS app bundle icon — copy .icns into Resources and set CFBundleIconFile
+if(APPLE)
+  set(_bridge_icns "${CMAKE_CURRENT_SOURCE_DIR}/Icons/Icon Bridge.icns")
+  target_sources(EasyBridge PRIVATE "${_bridge_icns}")
+  set_source_files_properties("${_bridge_icns}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+  set_target_properties(EasyBridge PROPERTIES MACOSX_BUNDLE_ICON_FILE "Icon Bridge.icns")
+endif()
 
 target_sources(EasyBridge PRIVATE
   Source/Main.cpp
