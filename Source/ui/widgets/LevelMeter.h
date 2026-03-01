@@ -25,9 +25,9 @@ public:
     void paint (juce::Graphics& g) override
     {
         auto intBounds = getLocalBounds();
-        constexpr float corner = 2.0f;
+        constexpr float corner = 4.0f;
 
-        g.setColour (juce::Colour (0xFF0D0E12));
+        g.setColour (juce::Colour (0xFF242424));
         g.fillRoundedRectangle (intBounds.toFloat(), corner);
 
         auto bounds = intBounds.toFloat().reduced (1.0f);

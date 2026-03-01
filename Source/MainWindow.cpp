@@ -49,9 +49,11 @@ void setupOffsetSlider (juce::Slider& s)
 void setupDbSlider (juce::Slider& s)
 {
     s.setSliderStyle (juce::Slider::LinearHorizontal);
-    s.setTextBoxStyle (juce::Slider::TextBoxRight, false, 44, 20);
+    s.setTextBoxStyle (juce::Slider::TextBoxRight, false, 60, 20);
     s.setRange (-24, 24, 0.1);
     s.setValue (0.0);
+    s.setTextValueSuffix (" dB");
+    s.setDoubleClickReturnValue (true, 0.0);
 }
 
 void fillRateCombo (juce::ComboBox& combo)
@@ -271,9 +273,42 @@ private:
     juce::Component::SafePointer<MainContentComponent> safeOwner_;
 };
 
+// ─── RowsPanel ────────────────────────────────────────────────────────────────
+// Scrollable content panel that holds all parameter section rows.
+// MainContentComponent places this inside a juce::Viewport so that when the
+// total row height exceeds the available screen area the user can scroll
+// instead of rows getting squished.
+class RowsPanel final : public juce::Component
+{
+public:
+    RowsPanel() { setOpaque (false); }
+
+    // Filled by MainContentComponent::resized() and read back in paint().
+    juce::Array<juce::Rectangle<int>> paramRowRects;
+    juce::Array<juce::Rectangle<int>> sectionRowRects;
+
+    void paint (juce::Graphics& g) override
+    {
+        g.setColour (kSection);
+        for (auto r : sectionRowRects)
+            g.fillRoundedRectangle (r.toFloat(), 5.0f);
+
+        g.setColour (kRow);
+        for (auto r : paramRowRects)
+            g.fillRoundedRectangle (r.toFloat(), 5.0f);
+
+        g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
+        for (auto r : sectionRowRects)
+            g.drawRoundedRectangle (r.toFloat(), 5.0f, 1.0f);
+        for (auto r : paramRowRects)
+            g.drawRoundedRectangle (r.toFloat(), 5.0f, 1.0f);
+    }
+};
+
 MainContentComponent::MainContentComponent()
 {
     ltcOutputApplyThread_ = std::thread ([this] { ltcOutputApplyLoop(); });
+    rowsPanel_ = std::make_unique<RowsPanel>();
     setOpaque (true);
 
     loadFontsAndIcon();
@@ -346,7 +381,7 @@ MainContentComponent::MainContentComponent()
     sourceCombo_.addItem ("OSC", 4);
     sourceCombo_.setSelectedId (1, juce::dontSendNotification);
     styleCombo (sourceCombo_);
-    addAndMakeVisible (sourceHeaderLabel_);
+    rowsPanel_->addAndMakeVisible (sourceHeaderLabel_);
     sourceExpandBtn_.setExpanded (true);
     sourceExpandBtn_.onClick = [this]
     {
@@ -355,8 +390,8 @@ MainContentComponent::MainContentComponent()
         updateWindowHeight();
         resized();
     };
-    addAndMakeVisible (sourceExpandBtn_);
-    addAndMakeVisible (sourceCombo_);
+    rowsPanel_->addAndMakeVisible (sourceExpandBtn_);
+    rowsPanel_->addAndMakeVisible (sourceCombo_);
     sourceHeaderLabel_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
     sourceHeaderLabel_.setFont (juce::FontOptions (14.0f));
     sourceHeaderLabel_.setJustificationType (juce::Justification::centredLeft);
@@ -372,7 +407,7 @@ MainContentComponent::MainContentComponent()
     {
         l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xba, 0xc5, 0xd6));
         l->setJustificationType (juce::Justification::centredLeft);
-        addAndMakeVisible (*l);
+        rowsPanel_->addAndMakeVisible (*l);
     }
 
     for (auto* c : { &ltcInDriverCombo_, &ltcOutDriverCombo_ })
@@ -394,8 +429,8 @@ MainContentComponent::MainContentComponent()
     styleCombo (ltcOutSampleRateCombo_);
     styleCombo (mtcOutCombo_);
     styleCombo (artnetOutCombo_);
-    addAndMakeVisible (ltcInDriverCombo_);
-    addAndMakeVisible (ltcOutDriverCombo_);
+    rowsPanel_->addAndMakeVisible (ltcInDriverCombo_);
+    rowsPanel_->addAndMakeVisible (ltcOutDriverCombo_);
 
     fillChannelCombo (ltcInChannelCombo_);
     fillChannelCombo (ltcOutChannelCombo_);
@@ -447,11 +482,11 @@ MainContentComponent::MainContentComponent()
         h->setFont (juce::FontOptions (14.0f));
         h->setJustificationType (juce::Justification::centredLeft);
         h->setBorderSize (juce::BorderSize<int> (0, 42, 0, 0));
-        addAndMakeVisible (*h);
+        rowsPanel_->addAndMakeVisible (*h);
     }
 
     for (auto* b : { &outLtcExpandBtn_, &outMtcExpandBtn_, &outArtExpandBtn_ })
-        addAndMakeVisible (*b);
+        rowsPanel_->addAndMakeVisible (*b);
     outLtcExpandBtn_.setExpanded (false);
     outMtcExpandBtn_.setExpanded (false);
     outArtExpandBtn_.setExpanded (false);
@@ -460,14 +495,14 @@ MainContentComponent::MainContentComponent()
     outArtExpandBtn_.onClick = [this] { outArtExpanded_ = ! outArtExpanded_; outArtExpandBtn_.setExpanded (outArtExpanded_); updateWindowHeight(); };
 
     for (auto* c : { &ltcOutSwitch_, &mtcOutSwitch_, &artnetOutSwitch_ })
-        addAndMakeVisible (*c);
+        rowsPanel_->addAndMakeVisible (*c);
     for (auto* c : { &ltcThruDot_, &mtcThruDot_ })
-        addAndMakeVisible (*c);
+        rowsPanel_->addAndMakeVisible (*c);
     for (auto* l : { &ltcThruLbl_, &mtcThruLbl_ })
     {
         l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xd0, 0xd0, 0xd0));
         l->setJustificationType (juce::Justification::centredLeft);
-        addAndMakeVisible (*l);
+        rowsPanel_->addAndMakeVisible (*l);
     }
 
     for (auto* c : {
@@ -476,7 +511,7 @@ MainContentComponent::MainContentComponent()
             &oscAdapterCombo_,
             &mtcInCombo_, &artnetInCombo_, &mtcOutCombo_, &artnetOutCombo_, &oscFpsCombo_ })
     {
-        addAndMakeVisible (*c);
+        rowsPanel_->addAndMakeVisible (*c);
         c->onChange = [this] { onInputSettingsChanged(); };
     }
     artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); };
@@ -504,7 +539,7 @@ MainContentComponent::MainContentComponent()
                 onOutputSettingsChanged();
             }
         };
-        addAndMakeVisible (artnetDestRemoveButtons_[i]);
+        rowsPanel_->addAndMakeVisible (artnetDestRemoveButtons_[i]);
     }
     artnetAddIpButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
     artnetAddIpButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
@@ -520,7 +555,7 @@ MainContentComponent::MainContentComponent()
             resized();
         }
     };
-    addAndMakeVisible (artnetAddIpButton_);
+    rowsPanel_->addAndMakeVisible (artnetAddIpButton_);
     ltcInDriverCombo_.onChange = [this]
     {
         refreshLtcDeviceListsByDriver();
@@ -550,21 +585,28 @@ MainContentComponent::MainContentComponent()
     for (auto* c : { &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_, &mtcOutCombo_, &artnetOutCombo_ })
         c->onChange = [this] { onOutputSettingsChanged(); };
 
-    addAndMakeVisible (ltcInGainSlider_);
-    addAndMakeVisible (ltcInLevelBar_);
-    addAndMakeVisible (ltcOutLevelSlider_);
-    addAndMakeVisible (ltcOffsetEditor_);
-    addAndMakeVisible (mtcOffsetEditor_);
-    addAndMakeVisible (artnetOffsetEditor_);
-    addAndMakeVisible (oscIpEditor_);
-    addAndMakeVisible (oscPortEditor_);
-    addAndMakeVisible (oscAddrStrEditor_);
-    addAndMakeVisible (oscAddrFloatEditor_);
-    addAndMakeVisible (artnetListenIpEditor_);
+    rowsPanel_->addAndMakeVisible (ltcInGainSlider_);
+    rowsPanel_->addAndMakeVisible (ltcInLevelBar_);
+    rowsPanel_->addAndMakeVisible (ltcOutLevelSlider_);
+    rowsPanel_->addAndMakeVisible (ltcOffsetEditor_);
+    rowsPanel_->addAndMakeVisible (mtcOffsetEditor_);
+    rowsPanel_->addAndMakeVisible (artnetOffsetEditor_);
+    rowsPanel_->addAndMakeVisible (oscIpEditor_);
+    rowsPanel_->addAndMakeVisible (oscPortEditor_);
+    rowsPanel_->addAndMakeVisible (oscAddrStrEditor_);
+    rowsPanel_->addAndMakeVisible (oscAddrFloatEditor_);
+    rowsPanel_->addAndMakeVisible (artnetListenIpEditor_);
     for (auto& e : artnetDestIpEditors_)
-        addAndMakeVisible (e);
+        rowsPanel_->addAndMakeVisible (e);
 
     updateArtnetIpControls();
+
+    // Viewport wraps the scrollable rows panel so the window never needs to
+    // exceed the usable screen height — rows scroll instead of squishing.
+    rowsViewport_.setScrollBarsShown (true, false);
+    rowsViewport_.setScrollBarThickness (8);
+    rowsViewport_.setViewedComponent (rowsPanel_.get(), false);
+    addAndMakeVisible (rowsViewport_);
 
     setSize (430, calcPreferredHeight());
     resized();
@@ -637,13 +679,13 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
     addRows (1); // out MTC header
     if (outMtcExpanded) addRows (2);
     addRows (1); // out ArtNet header
-    if (outArtExpanded) addRows (2 + artnetDestVisibleCount_);
+    if (outArtExpanded) addRows (1 + artnetDestVisibleCount_+1);
 
     h += 4; // gap before status
     h += 24; // status
     h += 4; // gap
     h += 40; // settings/quit buttons
-    return juce::jlimit (420, 1600, h);
+    return juce::jmax (420, h);  // no upper cap — height = sum of rows + gaps
 }
 
 void MainContentComponent::updateWindowHeight()
@@ -661,20 +703,21 @@ void MainContentComponent::updateWindowHeight()
         const int collapsedContent = calcHeightForState (false, sourceCombo_.getSelectedId(), false, false, false);
         const int expandedContent = calcHeightForState (true, sourceCombo_.getSelectedId(), true, true, true);
 
-        const int minTotal = collapsedContent + chrome;
-        const int maxTotal = expandedContent + chrome;
+        const int minTotal   = collapsedContent + chrome;
+        const int maxTotal   = expandedContent  + chrome; // used for auto-resize target only
         const int targetTotal = juce::jlimit (minTotal, maxTotal, currentContent + chrome);
 
-        window->setResizeLimits (430, minTotal, 430, maxTotal);
+        // Upper resize limit is left open (8192) so the user can always drag the
+        // window taller than the auto-sized target; macOS/JUCE clamp to screen edge.
+        window->setResizeLimits (430, minTotal, 430, 8192);
         if (window->getHeight() != targetTotal)
             window->setSize (window->getWidth(), targetTotal);
     }
-
-    // Force the content component to the exact calculated height so that any
-    // subsequent resized() call (explicit or from JUCE) lays out correctly,
-    // even if the window resize hasn't propagated synchronously yet.
-    if (getHeight() != currentContent)
-        setSize (getWidth(), currentContent);
+    // On macOS with a native title bar, window->setSize() may not immediately
+    // propagate updated bounds to the content component. Calling resized() here
+    // guarantees the layout always reflects the current component size, regardless
+    // of whether the OS has applied the window resize synchronously.
+    resized();
 }
 
 void MainContentComponent::loadFontsAndIcon()
@@ -727,7 +770,7 @@ void MainContentComponent::applyLookAndFeel()
 
     // Scrollbar inside popup menu.
     lookAndFeel_->setColour (juce::ScrollBar::backgroundColourId, juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
-    lookAndFeel_->setColour (juce::ScrollBar::thumbColourId, kTeal);
+    lookAndFeel_->setColour (juce::ScrollBar::thumbColourId, juce::Colour::fromRGB (0x5a, 0x5a, 0x5a));
     lookAndFeel_->setColour (juce::ScrollBar::trackColourId, juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
 
     lookAndFeel_->setColour (juce::TextEditor::backgroundColourId, kInput);
@@ -761,19 +804,8 @@ void MainContentComponent::paint (juce::Graphics& g)
         g.drawRoundedRectangle (tcRect, 5.0f, 1.0f);
     }
 
-    g.setColour (kSection);
-    for (auto r : sectionRowRects_)
-        g.fillRoundedRectangle (r.toFloat(), 5.0f);
-
-    g.setColour (kRow);
-    for (auto r : paramRowRects_)
-        g.fillRoundedRectangle (r.toFloat(), 5.0f);
-
-    g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
-    for (auto r : sectionRowRects_)
-        g.drawRoundedRectangle (r.toFloat(), 5.0f, 1.0f);
-    for (auto r : paramRowRects_)
-        g.drawRoundedRectangle (r.toFloat(), 5.0f, 1.0f);
+    // Section and param row backgrounds are painted by RowsPanel::paint()
+    // (which lives inside rowsViewport_).
 
     if (! buttonRowRect_.isEmpty())
     {
@@ -784,10 +816,15 @@ void MainContentComponent::paint (juce::Graphics& g)
 
 void MainContentComponent::resized()
 {
-    paramRowRects_.clear();
-    sectionRowRects_.clear();
+    // Fixed-top consumes: 8 (margin) + 40 (title) + 4 + 90 (TC) + 24 (fps) + 4 = 170 px
+    // Fixed-bottom: 72 px (= kBottomStripH) + 8 (margin)
+    // Rows-panel height = calcPreferredHeight() - 250  (= preferred - margins - fixed)
+    constexpr int kBottomStripH = 4 + 24 + 4 + 40; // gap+status+gap+buttons = 72
 
+    // Use ACTUAL window bounds — viewport handles any overflow by scrolling.
     auto a = getLocalBounds().reduced (8);
+    auto bottomStrip = a.removeFromBottom (kBottomStripH);
+
     headerRect_ = a.removeFromTop (40);
     auto header = headerRect_.reduced (6, 0);
     auto help = header.removeFromRight (28);
@@ -811,16 +848,36 @@ void MainContentComponent::resized()
     tcFpsLabel_.setBounds (a.removeFromTop (24));
     a.removeFromTop (4);
 
-    auto row = [&a] (int h = 40)
+    // ── Scrollable rows viewport ─────────────────────────────────────────────
+    // `a` now holds the middle area between the fixed top and fixed bottom.
+    // The RowsPanel is always sized to its preferred (full) height; the viewport
+    // clips to the available screen area and lets the user scroll if needed.
+    rowsViewport_.setBounds (a);
+    const int rowsContentH = juce::jmax (0, calcPreferredHeight() - 250);
+    // When the content is taller than the viewport a vertical scrollbar appears.
+    // Reserve space for it so it does not overlap row widgets; when there is
+    // no overflow the panel uses the full viewport width.
+    const bool needsScrollbar = (rowsContentH > a.getHeight());
+    const int panelW = needsScrollbar
+                           ? a.getWidth() - rowsViewport_.getScrollBarThickness()
+                           : a.getWidth();
+    rowsPanel_->setSize (panelW, rowsContentH);
+
+    // Row layout is now in RowsPanel-local coordinates (origin = top-left of panel).
+    rowsPanel_->paramRowRects.clear();
+    rowsPanel_->sectionRowRects.clear();
+    auto rb = juce::Rectangle<int> (0, 0, rowsPanel_->getWidth(), rowsPanel_->getHeight());
+
+    auto row = [&rb] (int h = 40)
     {
-        auto r = a.removeFromTop (h);
-        a.removeFromTop (4);
+        auto r = rb.removeFromTop (h);
+        rb.removeFromTop (4);
         return r;
     };
     auto fieldRow = [&] (juce::Label& lbl, juce::Component& editor)
     {
         auto r = row();
-        paramRowRects_.add (r);
+        rowsPanel_->paramRowRects.add (r);
         lbl.setVisible (true);
         editor.setVisible (true);
         auto labelArea = r.removeFromLeft (112);
@@ -853,7 +910,7 @@ void MainContentComponent::resized()
     hideRowLabels();
 
     auto sourceRow = row();
-    sectionRowRects_.add (sourceRow);
+    rowsPanel_->sectionRowRects.add (sourceRow);
     auto sourceLabelZone = sourceRow.removeFromLeft (112);
     {
         auto btnHost = sourceLabelZone.removeFromLeft (36);
@@ -898,7 +955,7 @@ void MainContentComponent::resized()
     }
 
     auto ltcHeader = row();
-    sectionRowRects_.add (ltcHeader);
+    rowsPanel_->sectionRowRects.add (ltcHeader);
     auto ltcHeaderCopy = ltcHeader;
     outLtcHeaderLabel_.setBounds (ltcHeaderCopy);
     {
@@ -931,7 +988,7 @@ void MainContentComponent::resized()
     }
 
     auto mtcHeader = row();
-    sectionRowRects_.add (mtcHeader);
+    rowsPanel_->sectionRowRects.add (mtcHeader);
     auto mtcHeaderCopy = mtcHeader;
     outMtcHeaderLabel_.setBounds (mtcHeaderCopy);
     {
@@ -960,7 +1017,7 @@ void MainContentComponent::resized()
     }
 
     auto artHeader = row();
-    sectionRowRects_.add (artHeader);
+    rowsPanel_->sectionRowRects.add (artHeader);
     auto artHeaderCopy = artHeader;
     outArtHeaderLabel_.setBounds (artHeaderCopy);
     {
@@ -979,7 +1036,7 @@ void MainContentComponent::resized()
     {
         fieldRow (artOutLbl_, artnetOutCombo_);
         auto destRow = row();
-        paramRowRects_.add (destRow);
+        rowsPanel_->paramRowRects.add (destRow);
         auto labelArea = destRow.removeFromLeft (112);
         artIpLbl_.setVisible (true);
         artIpLbl_.setBounds (labelArea.reduced (10, 0));
@@ -992,7 +1049,7 @@ void MainContentComponent::resized()
         for (int i = 1; i < artnetDestVisibleCount_; ++i)
         {
             auto extraRow = row();
-            paramRowRects_.add (extraRow);
+            rowsPanel_->paramRowRects.add (extraRow);
             auto extraLabelArea = extraRow.removeFromLeft (112);
             artIpExtraLbls_[(size_t) (i - 1)].setVisible (true);
             artIpExtraLbls_[(size_t) (i - 1)].setBounds (extraLabelArea.reduced (10, 0));
@@ -1005,10 +1062,14 @@ void MainContentComponent::resized()
         fieldRow (artOffsetLbl_, artnetOffsetEditor_);
     }
 
-    // Status and buttons: top-down, directly after last row (gap included via row() pattern).
-    statusRect_ = a.removeFromTop (24);
-    a.removeFromTop (4);
-    buttonRowRect_ = a.removeFromTop (40);
+    // Redraw the rows panel so updated background rects are visible.
+    rowsPanel_->repaint();
+
+    // Status and buttons: laid out in bottom strip (pinned to actual window bottom).
+    bottomStrip.removeFromTop (4);
+    statusRect_ = bottomStrip.removeFromTop (24);
+    bottomStrip.removeFromTop (4);
+    buttonRowRect_ = bottomStrip.removeFromTop (40);
 
     statusButton_.setBounds (statusRect_);
     auto buttons = buttonRowRect_;
@@ -1873,15 +1934,21 @@ MainWindow::MainWindow()
 {
     setColour (juce::ResizableWindow::backgroundColourId, juce::Colour::fromRGB (0x11, 0x12, 0x16));
     setUsingNativeTitleBar (true);
-    setResizable (false, false);
-    setResizeLimits (430, 420, 430, 1600);
+    // Allow vertical resize only; width is fixed at 430 by the equal min/max below.
+    setResizable (true, false);
+    // Initial limits — updated immediately by MainContentComponent::updateWindowHeight().
+    // Min = all-collapsed height; no upper cap so the user can drag to screen edge.
+    setResizeLimits (430, 420, 430, 8192);
     setContentOwned (new MainContentComponent(), true);
+    // After setContentOwned the window is already sized to the content's preferred
+    // height (set via setSize() in MainContentComponent::MainContentComponent()).
+    // Just centre on screen without forcing the height back to a hardcoded value.
+    centreWithSize (430, getHeight());
     const auto icon = platform::loadBridgeAppIcon();
     setIcon (icon);
     createTrayIcon();
     if (trayIcon_ != nullptr && icon.isValid())
         trayIcon_->setIconImage (icon, icon);
-    centreWithSize (430, 420);
     setVisible (true);
 
 #if JUCE_WINDOWS
@@ -1890,9 +1957,7 @@ MainWindow::MainWindow()
         if (safe == nullptr)
             return;
         platform::applyNativeDarkTitleBar (*safe);
-        // Strip the OS-level resize border — JUCE's setResizable(false) alone does
-        // not remove WS_THICKFRAME when a native title bar is in use.
-        platform::applyNativeFixedWindow (*safe);
+        // Note: applyNativeFixedWindow removed — vertical resize is now enabled.
     });
 #endif
 }

@@ -84,5 +84,32 @@ public:
         g.setColour (c);
         g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
     }
+
+    // Rounded text-box background for Slider labels.
+    void drawLabel (juce::Graphics& g, juce::Label& label) override
+    {
+        if (dynamic_cast<juce::Slider*> (label.getParentComponent()) != nullptr)
+        {
+            auto b = label.getLocalBounds().toFloat().reduced (0.5f);
+            g.setColour (label.findColour (juce::Label::backgroundColourId));
+            g.fillRoundedRectangle (b, 4.0f);
+            g.setColour (label.findColour (juce::Label::backgroundColourId)
+                             .contrasting (0.3f)
+                             .withAlpha (0.6f));
+            g.drawRoundedRectangle (b, 4.0f, 0.8f);
+
+            if (! label.isBeingEdited())
+            {
+                g.setColour (label.findColour (juce::Label::textColourId)
+                                 .withMultipliedAlpha (label.isEnabled() ? 1.0f : 0.5f));
+                g.setFont (label.getFont());
+                g.drawFittedText (label.getText(),
+                                  label.getLocalBounds().reduced (3, 1),
+                                  label.getJustificationType(), 1, 1.0f);
+            }
+            return;
+        }
+        juce::LookAndFeel_V4::drawLabel (g, label);
+    }
 };
 } // namespace bridge

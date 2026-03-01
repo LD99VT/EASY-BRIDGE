@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <condition_variable>
 #include <mutex>
@@ -20,6 +21,7 @@
 namespace bridge
 {
 class BridgeAudioScanThread;
+class RowsPanel;  // scrollable rows canvas (defined in MainWindow.cpp)
 
 class MainContentComponent final : public juce::Component, private juce::Timer
 {
@@ -134,7 +136,7 @@ private:
     juce::Label inChannelLbl_      { {}, "Channel:" };
     juce::Label inRateLbl_         { {}, "Sample rate:" };
     juce::Label inLevelLbl_        { {}, "Level:" };
-    juce::Label inGainLbl_         { {}, "Input gain:" };
+    juce::Label inGainLbl_         { {}, "Input Gain:" };
     juce::Label mtcInLbl_          { {}, "MTC Input:" };
     juce::Label artInLbl_          { {}, "ArtNet adapter:" };
     juce::Label artInListenIpLbl_  { {}, "Listen IP:" };
@@ -150,7 +152,7 @@ private:
     juce::Label outChannelLbl_ { {}, "Channel:" };
     juce::Label outRateLbl_    { {}, "Sample rate:" };
     juce::Label outOffsetLbl_  { {}, "Offset (frames):" };
-    juce::Label outLevelLbl_   { {}, "Output level:" };
+    juce::Label outLevelLbl_   { {}, "Output Gain:" };
     juce::Label mtcOutLbl_     { {}, "MIDI Output:" };
     juce::Label mtcOffsetLbl_  { {}, "Offset (frames):" };
     juce::Label artOutLbl_     { {}, "Interface:" };
@@ -203,8 +205,10 @@ private:
     bool outMtcExpanded_ { false };
     bool outArtExpanded_ { false };
 
-    juce::Array<juce::Rectangle<int>> paramRowRects_;
-    juce::Array<juce::Rectangle<int>> sectionRowRects_;
+    // Scrollable rows panel + viewport (replace direct row layout in MainComponent)
+    std::unique_ptr<RowsPanel> rowsPanel_;
+    juce::Viewport rowsViewport_;
+
     juce::Rectangle<int> headerRect_;
     juce::Rectangle<int> statusRect_;
     juce::Rectangle<int> buttonRowRect_;
