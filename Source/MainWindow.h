@@ -17,6 +17,7 @@
 #include "ui/widgets/DotToggle.h"
 #include "ui/widgets/MacSwitch.h"
 #include "ui/widgets/LevelMeter.h"
+#include "ui/DarkDialog.h"
 
 namespace bridge
 {
@@ -119,6 +120,7 @@ private:
     double pendingLtcOutputSampleRate_ { 0.0 };
     int pendingLtcOutputBufferSize_ { 0 };
     bool pendingLtcOutputEnabled_ { false };
+    bool pendingLtcThruMode_ { false };
 
     juce::ComboBox sourceCombo_;
     ExpandCircleButton sourceExpandBtn_;
@@ -189,8 +191,6 @@ private:
     juce::ComboBox mtcOutCombo_;
     juce::TextEditor mtcOffsetEditor_;
     MacSwitch mtcOutSwitch_;
-    DotToggle mtcThruDot_;
-    juce::Label mtcThruLbl_ { {}, "Thru" };
 
     juce::ComboBox artnetOutCombo_;
     std::array<juce::TextEditor, 5> artnetDestIpEditors_;

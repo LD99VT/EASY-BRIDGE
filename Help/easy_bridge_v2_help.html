@@ -256,16 +256,16 @@
 
     <!-- ── OUTPUT LTC ─────────────────────────────────────────────────── -->
     <h2 id="ltc-out">Output LTC</h2>
-    <p>Generates an LTC audio signal from the decoded timecode and sends it to a selected audio output device.</p>
+    <p>Generates an LTC audio signal from the decoded timecode and sends it to a selected audio output device. When <b>Thru</b> mode is active, the raw input audio is routed directly instead.</p>
     <table class="fields">
       <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Out LTC toggle</td><td>Enable or disable the LTC output stream. The section header row acts as the on/off switch. When disabled, no audio is sent to the output device.</td></tr>
-      <tr><td>Thru indicator</td><td>A small dot in the section header. Lights up when LTC frames are actively being written to the audio buffer. Use it to confirm the output is running.</td></tr>
+      <tr><td>Out LTC toggle</td><td>Enable or disable the LTC output stream. When disabled, no audio is sent to the output device regardless of the Thru setting.</td></tr>
+      <tr><td>Thru dot</td><td>Clickable toggle in the section header. When <b>ON</b> (and the Out LTC switch is also ON), the raw LTC audio captured from the input device is passed directly to the selected output — no decode / re-encode cycle. This preserves the original signal bit-for-bit and eliminates encoder latency. When <b>OFF</b>, the normal timecode encoder output is used. The LTC input source must be running for Thru to produce audio.</td></tr>
       <tr><td>Driver</td><td>Selects the audio host API for output (same options as Input Driver). ASIO is preferred for lowest latency.</td></tr>
       <tr><td>Device (Output)</td><td>The audio output device to carry the LTC signal. Choose the device that connects to your downstream system.</td></tr>
       <tr><td>Channel</td><td>Output channel to write the LTC signal to. Options: 1–8 and <code>1+2</code> (duplicated to both channels). Use <code>1+2</code> if your downstream device requires a stereo feed.</td></tr>
       <tr><td>Sample Rate</td><td>Output sample rate. Must match the device's configured rate. Mismatched rates cause pitch-shifted or garbled LTC.</td></tr>
-      <tr><td>Offset</td><td>Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Use it to compensate for downstream decoding latency. Positive = advance; Negative = delay.</td></tr>
+      <tr><td>Offset</td><td>Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Not applied in Thru mode (the raw audio is not time-shifted). Use it in normal mode to compensate for downstream decoding latency.</td></tr>
       <tr><td>Level</td><td>Output level in dB, range <code>−24 dB</code> to <code>+24 dB</code>. Sets the amplitude of the generated LTC audio signal. Double-click to reset to 0 dB. Adjust to match your device's expected input level.</td></tr>
     </table>
 
@@ -275,10 +275,10 @@
     <table class="fields">
       <tr><th>Field</th><th>Description</th></tr>
       <tr><td>Out MTC toggle</td><td>Enable or disable MTC output. When disabled, no MIDI messages are sent.</td></tr>
-      <tr><td>Thru indicator</td><td>Dot in the section header that lights when MTC frames are actively being sent.</td></tr>
       <tr><td>MIDI Output</td><td>Destination MIDI port for MTC messages. Select the port connected to the target device (hardware or virtual).</td></tr>
       <tr><td>Offset</td><td>Frame offset applied to MTC output, range <code>−30</code> to <code>+30</code> frames. Compensates for MIDI routing latency.</td></tr>
     </table>
+    <div class="note"><b>MTC loop guard:</b> If the selected MTC Output port is the same as the MTC Input port (and MTC is the active source), the app will automatically switch the Output to the next available MIDI port. If no other port is available, MTC Output is disabled and a warning dialog is shown. This prevents MIDI feedback loops.</div>
 
     <!-- ── OUTPUT ARTNET ──────────────────────────────────────────────── -->
     <h2 id="artnet-out">Output ArtNet</h2>
@@ -353,6 +353,8 @@
       <tr><td>Sync drift between outputs</td><td>Use the Offset sliders on each output to compensate for downstream latency. Check Processing Latency in the Status Monitor window.</td></tr>
       <tr><td>ASIO driver failed to load</td><td>Ensure you are running the 64-bit build of Easy Bridge and that a 64-bit ASIO driver is installed (e.g. ReaRoute x64 from Reaper).</td></tr>
       <tr><td>Audio devices missing after reconnect</td><td>Use <b>Settings → Rescan audio devices</b> to refresh the device lists.</td></tr>
+      <tr><td>LTC Thru produces silence</td><td>Ensure the LTC Input source is selected and running (the Level meter should show a signal). Thru requires an active LTC input — it copies the same audio channel being decoded. Confirm the Out LTC switch is ON and the Thru dot is ON. Select the correct output device and channel.</td></tr>
+      <tr><td>MTC Output auto-switched or disabled unexpectedly</td><td>The MTC loop guard activated because the selected Output port matched the Input port while MTC was the active source. Choose a different Output port, or use a virtual MIDI loopback (e.g. loopMIDI) to create a separate port.</td></tr>
     </table>
 
   </main>

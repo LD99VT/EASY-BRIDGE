@@ -67,6 +67,7 @@ target_sources(EasyBridge PRIVATE
   Source/ui/widgets/DotToggle.h
   Source/ui/widgets/MacSwitch.h
   Source/ui/widgets/LevelMeter.h
+  Source/ui/DarkDialog.h
   Source/ui/StatusMonitorWindow.h
 )
 

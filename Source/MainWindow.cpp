@@ -244,7 +244,7 @@ public:
                 engine::AudioChoice c;
                 c.typeName = typeName;
                 c.deviceName = name;
-                c.displayName = typeName + ": " + name;
+                c.displayName = AudioDeviceEntry::makeDisplayName (typeName, name);
                 inputs.add (c);
             }
 
@@ -253,7 +253,7 @@ public:
                 engine::AudioChoice c;
                 c.typeName = typeName;
                 c.deviceName = name;
-                c.displayName = typeName + ": " + name;
+                c.displayName = AudioDeviceEntry::makeDisplayName (typeName, name);
                 outputs.add (c);
             }
         }
@@ -496,14 +496,11 @@ MainContentComponent::MainContentComponent()
 
     for (auto* c : { &ltcOutSwitch_, &mtcOutSwitch_, &artnetOutSwitch_ })
         rowsPanel_->addAndMakeVisible (*c);
-    for (auto* c : { &ltcThruDot_, &mtcThruDot_ })
-        rowsPanel_->addAndMakeVisible (*c);
-    for (auto* l : { &ltcThruLbl_, &mtcThruLbl_ })
-    {
-        l->setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
-        l->setJustificationType (juce::Justification::centredLeft);
-        rowsPanel_->addAndMakeVisible (*l);
-    }
+    rowsPanel_->addAndMakeVisible (ltcThruDot_);
+    ltcThruDot_.onToggle = [this] (bool) { queueLtcOutputApply(); };
+    ltcThruLbl_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
+    ltcThruLbl_.setJustificationType (juce::Justification::centredLeft);
+    rowsPanel_->addAndMakeVisible (ltcThruLbl_);
 
     for (auto* c : {
             &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_,
@@ -1001,12 +998,6 @@ void MainContentComponent::resized()
     }
     mtcHeader.removeFromLeft (110);
     mtcOutSwitch_.setBounds (mtcHeader.removeFromRight (54).reduced (0, 6));
-    {
-        auto dotHost = mtcHeader.removeFromRight (22);
-        const int d = 18;
-        mtcThruDot_.setBounds (dotHost.getCentreX() - d / 2, dotHost.getCentreY() - d / 2, d, d);
-    }
-    mtcThruLbl_.setBounds (mtcHeader.removeFromRight (40));
     outMtcHeaderLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     outMtcExpandBtn_.setExpanded (outMtcExpanded_);
 
@@ -1160,6 +1151,7 @@ void MainContentComponent::queueLtcOutputApply()
         pendingLtcOutputSampleRate_ = comboSampleRate (ltcOutSampleRateCombo_);
         pendingLtcOutputBufferSize_ = kLtcOutputBufferSize; // BUG-7 fix: named constant
         pendingLtcOutputEnabled_ = enabled;
+        pendingLtcThruMode_ = ltcThruDot_.getState();
         ltcOutputApplyPending_ = true;
     }
 
@@ -1177,6 +1169,7 @@ void MainContentComponent::ltcOutputApplyLoop()
         double sampleRate = 0.0;
         int bufferSize = 0;
         bool enabled = false;
+        bool thruMode = false;
 
         {
             std::unique_lock<std::mutex> lock (ltcOutputApplyMutex_);
@@ -1189,33 +1182,52 @@ void MainContentComponent::ltcOutputApplyLoop()
             sampleRate = pendingLtcOutputSampleRate_;
             bufferSize = pendingLtcOutputBufferSize_;
             enabled = pendingLtcOutputEnabled_;
+            thruMode = pendingLtcThruMode_;
             ltcOutputApplyPending_ = false;
         }
 
         juce::String err;
-        bridgeEngine_.startLtcOutput (choice, channel, sampleRate, bufferSize, err);
-        bridgeEngine_.setLtcOutputEnabled (enabled);
-
-        if (err.isNotEmpty())
+        if (thruMode && enabled)
         {
-            juce::MessageManager::callAsync ([safeThis, err]
-            {
-                if (safeThis != nullptr)
-                    safeThis->setStatusText (err, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
-            });
+            // Thru ON + switch ON → stop normal output, run passthrough
+            bridgeEngine_.stopLtcOutput();
+            bridgeEngine_.startLtcThru (choice, channel, sampleRate, bufferSize, err);
+            if (err.isNotEmpty())
+                juce::MessageManager::callAsync ([safeThis, err]
+                {
+                    if (safeThis != nullptr)
+                    {
+                        safeThis->setStatusText (err, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+                        safeThis->ltcThruDot_.setState (false);
+                    }
+                });
+        }
+        else if (thruMode && !enabled)
+        {
+            // Thru ON + switch OFF → stop both, nothing runs
+            bridgeEngine_.stopLtcThru();
+            bridgeEngine_.stopLtcOutput();
+        }
+        else
+        {
+            // Normal mode (Thru OFF) → stop thru, run normal output
+            bridgeEngine_.stopLtcThru();
+            bridgeEngine_.startLtcOutput (choice, channel, sampleRate, bufferSize, err);
+            bridgeEngine_.setLtcOutputEnabled (enabled);
+            if (err.isNotEmpty())
+                juce::MessageManager::callAsync ([safeThis, err]
+                {
+                    if (safeThis != nullptr)
+                        safeThis->setStatusText (err, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+                });
         }
     }
 }
 
 void MainContentComponent::onOutputToggleChanged()
 {
-    if (ltcOutSwitch_.getState())
-    {
-        bridgeEngine_.setLtcOutputEnabled (true);
-        queueLtcOutputApply();
-    }
-    else
-        bridgeEngine_.setLtcOutputEnabled (false);
+    bridgeEngine_.setLtcOutputEnabled (ltcOutSwitch_.getState());
+    queueLtcOutputApply();
 
     bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
@@ -1227,7 +1239,42 @@ void MainContentComponent::onOutputSettingsChanged()
     queueLtcOutputApply();
 
     if (mtcOutCombo_.getNumItems() > 0)
-        bridgeEngine_.startMtcOutput (mtcOutCombo_.getSelectedItemIndex(), err);
+    {
+        // MTC loop guard: Out device cannot equal In device
+        const auto mtcInName  = mtcInCombo_.getText();
+        const auto mtcOutName = mtcOutCombo_.getText();
+        bool skipMtcStart = false;
+        if (sourceCombo_.getSelectedId() == 2  // only guard when MTC is the active source
+            && mtcInCombo_.getNumItems() > 0
+            && mtcInName == mtcOutName
+            && mtcInName.isNotEmpty())
+        {
+            bool switched = false;
+            for (int i = 0; i < mtcOutCombo_.getNumItems(); ++i)
+            {
+                if (mtcOutCombo_.getItemText (i) != mtcInName)
+                {
+                    mtcOutCombo_.setSelectedItemIndex (i, juce::dontSendNotification);
+                    setStatusText ("MTC Out: auto-switched (same device as MTC In)",
+                                   juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+                    switched = true;
+                    break;
+                }
+            }
+            if (! switched)
+            {
+                mtcOutSwitch_.setState (false);
+                bridgeEngine_.setMtcOutputEnabled (false);
+                DarkDialog::show ("MTC Output",
+                    "MTC In and MTC Out cannot use the same device.\n"
+                    "No other MIDI device is available.\nMTC Output has been disabled.",
+                    this);
+                skipMtcStart = true;
+            }
+        }
+        if (! skipMtcStart)
+            bridgeEngine_.startMtcOutput (mtcOutCombo_.getSelectedItemIndex(), err);
+    }
 
     if (artnetOutCombo_.getNumItems() > 0)
         bridgeEngine_.startArtnetOutput (artnetOutCombo_.getSelectedItemIndex(),
@@ -1846,7 +1893,6 @@ void MainContentComponent::resetToDefaults()
     mtcOutSwitch_.setState (false);
     artnetOutSwitch_.setState (false);
     ltcThruDot_.setState (false);
-    mtcThruDot_.setState (false);
     ltcOffsetEditor_.setText ("0", juce::dontSendNotification);
     mtcOffsetEditor_.setText ("0", juce::dontSendNotification);
     artnetOffsetEditor_.setText ("0", juce::dontSendNotification);
