@@ -1818,10 +1818,18 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     outMtcExpandBtn_.setExpanded (outMtcExpanded_);
     outArtExpandBtn_.setExpanded (outArtExpanded_);
 
-    onInputSettingsChanged();
-    onOutputSettingsChanged();
+    // Update layout and paint immediately so the UI reflects the loaded state
+    // before audio device init blocks the message thread.
     updateWindowHeight();
-    resized();
+    repaint();
+    juce::Timer::callAfterDelay (50, [safe = juce::Component::SafePointer<MainContentComponent> (this)]
+    {
+        if (auto* self = safe.getComponent())
+        {
+            self->onInputSettingsChanged();
+            self->onOutputSettingsChanged();
+        }
+    });
     lastConfigFile_ = cfgFile;
     saveRuntimePrefs();
     setStatusText ("STOPPED - config loaded: " + cfgFile.getFileName(), juce::Colour::fromRGB (0xec, 0x48, 0x3c));
