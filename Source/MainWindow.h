@@ -148,6 +148,8 @@ private:
     juce::Label oscFpsLbl_         { {}, "OSC FPS:" };
     juce::Label oscStrLbl_         { {}, "OSC str cmd:" };
     juce::Label oscFloatLbl_       { {}, "OSC float cmd:" };
+    juce::Label oscFloatTypeLbl_   { {}, "Float type:" };
+    juce::Label oscFloatMaxLbl_    { {}, "Float max (s):" };
 
     juce::Label outDriverLbl_  { {}, "Driver:" };
     juce::Label outDeviceLbl_  { {}, "Device (out):" };
@@ -178,6 +180,8 @@ private:
     juce::ComboBox oscFpsCombo_;
     juce::TextEditor oscAddrStrEditor_;
     juce::TextEditor oscAddrFloatEditor_;
+    juce::ComboBox   oscFloatTypeCombo_;
+    juce::TextEditor oscFloatMaxEditor_;
 
     juce::ComboBox ltcOutDeviceCombo_;
     juce::ComboBox ltcOutChannelCombo_;

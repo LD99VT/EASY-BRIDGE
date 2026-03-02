@@ -398,7 +398,7 @@ MainContentComponent::MainContentComponent()
     sourceHeaderLabel_.setBorderSize (juce::BorderSize<int> (0, 6, 0, 0));
     juce::Label* rowLabels[] = {
         &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
-        &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
+        &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_, &oscFloatTypeLbl_, &oscFloatMaxLbl_,
         &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outOffsetLbl_, &outLevelLbl_,
         &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_,
         &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
@@ -442,10 +442,18 @@ MainContentComponent::MainContentComponent()
     oscPortEditor_.setInputRestrictions (5, "0123456789");
     oscAddrStrEditor_.setText ("/frames/str");
     oscAddrFloatEditor_.setText ("/time");
+    oscFloatTypeCombo_.addItem ("Seconds",    1);
+    oscFloatTypeCombo_.addItem ("Frames",     2);
+    oscFloatTypeCombo_.addItem ("Normalized", 3);
+    oscFloatTypeCombo_.setSelectedId (1, juce::dontSendNotification);
+    oscFloatMaxEditor_.setText ("3600");
+    oscFloatMaxEditor_.setInputRestrictions (10, "0123456789.");
     styleEditor (oscIpEditor_);
     styleEditor (oscPortEditor_);
     styleEditor (oscAddrStrEditor_);
     styleEditor (oscAddrFloatEditor_);
+    styleCombo  (oscFloatTypeCombo_);
+    styleEditor (oscFloatMaxEditor_);
     styleEditor (artnetListenIpEditor_);
     artnetListenIpEditor_.setText ("0.0.0.0");
     for (auto& e : artnetDestIpEditors_)
@@ -512,6 +520,8 @@ MainContentComponent::MainContentComponent()
         c->onChange = [this] { onInputSettingsChanged(); };
     }
     artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); };
+    oscFloatTypeCombo_.onChange = [this] { resized(); onInputSettingsChanged(); };
+    oscFloatMaxEditor_.onTextChange = [this] { onInputSettingsChanged(); };
     for (auto& e : artnetDestIpEditors_)
         e.onTextChange = [this] { onOutputSettingsChanged(); };
     for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
@@ -604,6 +614,8 @@ MainContentComponent::MainContentComponent()
     rowsPanel_->addAndMakeVisible (oscPortEditor_);
     rowsPanel_->addAndMakeVisible (oscAddrStrEditor_);
     rowsPanel_->addAndMakeVisible (oscAddrFloatEditor_);
+    rowsPanel_->addAndMakeVisible (oscFloatTypeCombo_);
+    rowsPanel_->addAndMakeVisible (oscFloatMaxEditor_);
     rowsPanel_->addAndMakeVisible (artnetListenIpEditor_);
     for (auto& e : artnetDestIpEditors_)
         rowsPanel_->addAndMakeVisible (e);
@@ -908,7 +920,7 @@ void MainContentComponent::resized()
     {
         juce::Label* labels[] = {
             &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
-            &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_,
+            &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &oscStrLbl_, &oscFloatLbl_, &oscFloatTypeLbl_, &oscFloatMaxLbl_,
             &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outOffsetLbl_, &outLevelLbl_,
             &mtcOutLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artOffsetLbl_,
             &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
@@ -961,6 +973,14 @@ void MainContentComponent::resized()
         fieldRow (oscFpsLbl_, oscFpsCombo_);
         fieldRow (oscStrLbl_, oscAddrStrEditor_);
         fieldRow (oscFloatLbl_, oscAddrFloatEditor_);
+        fieldRow (oscFloatTypeLbl_, oscFloatTypeCombo_);
+        if (oscFloatTypeCombo_.getSelectedId() == 3)
+            fieldRow (oscFloatMaxLbl_, oscFloatMaxEditor_);
+        else
+        {
+            oscFloatMaxLbl_.setVisible (false);
+            oscFloatMaxEditor_.setVisible (false);
+        }
     }
 
     auto ltcHeader = row();
@@ -1085,7 +1105,7 @@ void MainContentComponent::resized()
     {
         juce::Component* comps[] = {
             &ltcInDriverCombo_, &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_, &ltcInLevelBar_, &ltcInGainSlider_,
-            &mtcInCombo_, &artnetInCombo_, &artnetListenIpEditor_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_
+            &mtcInCombo_, &artnetInCombo_, &artnetListenIpEditor_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_, &oscFloatTypeCombo_, &oscFloatMaxEditor_
         };
         for (auto* c : comps)
             if (c != nullptr)
@@ -1332,11 +1352,15 @@ void MainContentComponent::onInputSettingsChanged()
     if (oscFpsCombo_.getSelectedId() == 3) fps = FrameRate::FPS_2997;
     if (oscFpsCombo_.getSelectedId() == 4) fps = FrameRate::FPS_30;
     const auto bindIp = (oscIpEditor_.getText().trim().isNotEmpty() ? oscIpEditor_.getText().trim() : parseBindIpFromAdapterLabel (oscAdapterCombo_.getText()));
+    const auto floatVt  = static_cast<bridge::engine::OscValueType> (oscFloatTypeCombo_.getSelectedId() - 1);
+    const double floatMax = juce::jmax (1.0, oscFloatMaxEditor_.getText().getDoubleValue());
     bridgeEngine_.startOscInput (juce::jlimit (1, 65535, oscPortEditor_.getText().getIntValue()),
                                  bindIp,
                                  fps,
                                  oscAddrStrEditor_.getText(),
                                  oscAddrFloatEditor_.getText(),
+                                 floatVt,
+                                 floatMax,
                                  oscErr);
 
     restartSelectedSource();
@@ -1723,6 +1747,8 @@ void MainContentComponent::saveConfigToFile (const juce::File& cfgFile)
     obj->setProperty ("osc_fps", oscFpsCombo_.getText());
     obj->setProperty ("osc_str", oscAddrStrEditor_.getText());
     obj->setProperty ("osc_float", oscAddrFloatEditor_.getText());
+    obj->setProperty ("osc_float_type", oscFloatTypeCombo_.getSelectedId());
+    obj->setProperty ("osc_float_max", oscFloatMaxEditor_.getText());
     juce::Array<juce::var> artnetTargetsVar;
     const auto artnetTargets = collectArtnetTargets();
     for (const auto& ip : artnetTargets)
@@ -1803,6 +1829,8 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     oscPortEditor_.setText (propOr ("osc_port", oscPortEditor_.getText()).toString(), juce::dontSendNotification);
     oscAddrStrEditor_.setText (propOr ("osc_str", oscAddrStrEditor_.getText()).toString(), juce::dontSendNotification);
     oscAddrFloatEditor_.setText (propOr ("osc_float", oscAddrFloatEditor_.getText()).toString(), juce::dontSendNotification);
+    oscFloatTypeCombo_.setSelectedId ((int) propOr ("osc_float_type", oscFloatTypeCombo_.getSelectedId()), juce::dontSendNotification);
+    oscFloatMaxEditor_.setText (propOr ("osc_float_max", oscFloatMaxEditor_.getText()).toString(), juce::dontSendNotification);
     for (auto& e : artnetDestIpEditors_)
         e.setText ("", juce::dontSendNotification);
     artnetDestVisibleCount_ = 1;
