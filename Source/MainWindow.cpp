@@ -692,7 +692,12 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
         if (sourceId == 1) addRows (6);
         else if (sourceId == 2) addRows (1);
         else if (sourceId == 3) addRows (2);
-        else if (sourceId == 4) addRows (6);
+        else if (sourceId == 4)
+        {
+            addRows (7); // adapter, ip, port, fps, str, float, floatType
+            if (oscFloatTypeCombo_.getSelectedId() == 3)
+                addRows (1); // floatMax (Normalized only)
+        }
     }
 
     addRows (1); // out LTC header
@@ -1127,6 +1132,8 @@ void MainContentComponent::resized()
     oscFpsCombo_.setVisible (sourceExpanded_ && src == 4);
     oscAddrStrEditor_.setVisible (sourceExpanded_ && src == 4);
     oscAddrFloatEditor_.setVisible (sourceExpanded_ && src == 4);
+    oscFloatTypeCombo_.setVisible (sourceExpanded_ && src == 4);
+    oscFloatMaxEditor_.setVisible (sourceExpanded_ && src == 4 && oscFloatTypeCombo_.getSelectedId() == 3);
 
     ltcOutDriverCombo_.setVisible (outLtcExpanded_);
     ltcOutDeviceCombo_.setVisible (outLtcExpanded_);
