@@ -24,19 +24,21 @@ jobs:
       - name: Build Release
         run: cmake --build --preset windows-msvc-release
 
-      - name: Package
+      - name: Build Installer
         shell: pwsh
         run: |
           $exe = "build/windows-msvc/EasyBridge_artefacts/Release/Easy Bridge.exe"
           if (!(Test-Path $exe)) { throw "Release exe not found: $exe" }
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path $exe -DestinationPath "dist/EasyBridge-win64.zip" -Force
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup not found: $iscc" }
+          & $iscc installer_bridge.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: easybridge-win64
-          path: dist/EasyBridge-win64.zip
+          path: Installer/EasyBridge_Setup_*.exe
 
   build-macos:
     runs-on: macos-latest
@@ -97,7 +99,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/easybridge-win64/EasyBridge-win64.zip
+            dist/easybridge-win64/EasyBridge_Setup_*.exe
             dist/easybridge-macos-universal/EasyBridge-*.dmg
 
           generate_release_notes: true
