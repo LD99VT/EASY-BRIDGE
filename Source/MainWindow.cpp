@@ -573,6 +573,10 @@ MainContentComponent::MainContentComponent()
             restartSelectedSource();
             updateWindowHeight();
             resized();
+            // MTC loop guard: re-check when source switches TO MTC so that a
+            // pre-configured Out port that matches In is caught immediately.
+            if (sourceCombo_.getSelectedId() == 2)
+                onOutputSettingsChanged();
         };
 
     ltcOutSwitch_.onToggle = [this] (bool) { onOutputToggleChanged(); };
@@ -581,6 +585,14 @@ MainContentComponent::MainContentComponent()
 
     for (auto* c : { &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_, &mtcOutCombo_, &artnetOutCombo_ })
         c->onChange = [this] { onOutputSettingsChanged(); };
+
+    // MTC loop guard: re-check when MTC In device changes while source is MTC.
+    mtcInCombo_.onChange = [this]
+    {
+        onInputSettingsChanged();
+        if (sourceCombo_.getSelectedId() == 2)
+            onOutputSettingsChanged();
+    };
 
     rowsPanel_->addAndMakeVisible (ltcInGainSlider_);
     rowsPanel_->addAndMakeVisible (ltcInLevelBar_);
