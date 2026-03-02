@@ -1,8 +1,8 @@
 ; Easy Bridge Installer – Inno Setup 6
-; Filename: EasyBridge_Setup_2.5.8.exe
+; Filename: EasyBridge_Setup_{#AppVersion}.exe
 
 #define AppName "Easy Bridge"
-#define AppVersion "2.5.8"
+#include "version.iss"
 #define AppExe "Easy Bridge.exe"
 #define AppPublisher "LUA"
 #define BuildDir "build\windows-msvc\EasyBridge_artefacts\Release"

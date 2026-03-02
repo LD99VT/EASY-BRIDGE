@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MTC_Bridge_JUCE VERSION 2.6.0 LANGUAGES CXX)
+# ── Version ────────────────────────────────────────────────────────────────────
+# Single source of truth for the app version:
+# - installer_bridge.iss and Inno Setup read it via version.iss
+# - CMake reads the same version.iss here and passes it to project().
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/version.iss" _eb_version_line REGEX "AppVersion")
+if(NOT _eb_version_line)
+  message(FATAL_ERROR "version.iss not found or AppVersion not defined")
+endif()
+string(REGEX REPLACE ".*\"([0-9]+\\.[0-9]+\\.[0-9]+)\".*" "\\1" APP_VERSION "${_eb_version_line}")
+
+project(MTC_Bridge_JUCE VERSION ${APP_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
