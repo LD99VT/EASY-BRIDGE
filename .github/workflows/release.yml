@@ -56,28 +56,41 @@ jobs:
 
       - name: Package
         run: |
+          set -euo pipefail
           APP_PATH=$(find build/macos-universal -type d -name "Easy Bridge.app" | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: Easy Bridge.app not found" && exit 1
+            echo "ERROR: Easy Bridge.app not found in build/macos-universal"
+            find build/macos-universal -name "*.app" || true
+            exit 1
           fi
+          echo "Found app: $APP_PATH"
           VERSION=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' version.iss | head -1)
+          echo "Version: $VERSION"
           VOLNAME="Easy Bridge ${VERSION}"
           STAGING=$(mktemp -d)
-          cp -R "$APP_PATH"    "$STAGING/Easy Bridge.app"
+          cp -R "$APP_PATH" "$STAGING/Easy Bridge.app"
           ln -sf /Applications "$STAGING/Applications"
           mkdir -p Installer
           DMG_RW="Installer/EasyBridge-${VERSION}-rw.dmg"
           DMG_PATH="Installer/EasyBridge-${VERSION}.dmg"
           hdiutil create -volname "$VOLNAME" -srcfolder "$STAGING" -ov -format UDRW "$DMG_RW"
           rm -rf "$STAGING"
-          hdiutil attach "$DMG_RW" -readwrite -nobrowse > /dev/null
+          MOUNT_OUTPUT=$(hdiutil attach "$DMG_RW" -readwrite -nobrowse)
+          echo "Attached: $MOUNT_OUTPUT"
+          sleep 2
           MOUNT="/Volumes/${VOLNAME}"
-          cp "Icons/Icon Bridge.icns" "$MOUNT/.VolumeIcon.icns"
+          if [ ! -d "$MOUNT" ]; then
+            echo "ERROR: Volume not mounted at $MOUNT"
+            ls /Volumes/
+            exit 1
+          fi
+          cp "Icons/Icon Bridge.icns" "$MOUNT/.VolumeIcon.icns" || true
           xcrun SetFile -a V "$MOUNT/.VolumeIcon.icns" 2>/dev/null || true
-          python3 cmake/set_dmg_icon.py "$MOUNT"
-          hdiutil eject "$MOUNT" -quiet
+          python3 cmake/set_dmg_icon.py "$MOUNT" || true
+          hdiutil detach "$MOUNT" -quiet
           hdiutil convert "$DMG_RW" -ov -format UDZO -o "$DMG_PATH"
           rm -f "$DMG_RW"
+          echo "DMG ready: $DMG_PATH"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
