@@ -36,7 +36,36 @@ if(APPLE)
   set(_bridge_icns "${CMAKE_CURRENT_SOURCE_DIR}/Icons/Icon Bridge.icns")
   target_sources(EasyBridge PRIVATE "${_bridge_icns}")
   set_source_files_properties("${_bridge_icns}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-  set_target_properties(EasyBridge PROPERTIES MACOSX_BUNDLE_ICON_FILE "Icon Bridge.icns")
+  # CFBundleIconFile must NOT include the extension (Apple requirement)
+  set_target_properties(EasyBridge PROPERTIES MACOSX_BUNDLE_ICON_FILE "Icon Bridge")
+  # Post-build: guarantee icon lands in bundle and Info.plist is correct
+  # (JUCE/Xcode sometimes does not substitute MACOSX_BUNDLE_ICON_FILE reliably)
+  add_custom_command(TARGET EasyBridge POST_BUILD
+    COMMAND "${CMAKE_COMMAND}"
+      "-DBUNDLE_CONTENT=$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>"
+      "-DICNS_SRC=${_bridge_icns}"
+      "-DICON_NAME=Icon Bridge"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_macos_icon.cmake"
+    COMMENT "Patching macOS bundle icon"
+    VERBATIM
+  )
+  # Copy runtime assets into Contents/ (one level up from MacOS/) so the
+  # walk-up search in findBridgeBaseDir() finds Fonts/, Help/, Icons/ at
+  # Contents/ level — without placing non-code files in Contents/MacOS/
+  # (which would make codesign reject them as unsigned code objects).
+  add_custom_command(TARGET EasyBridge POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/Fonts"
+      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Fonts"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/Help"
+      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Help"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/Icons"
+      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Icons"
+    COMMENT "Copying runtime assets into macOS bundle (Contents/)"
+    VERBATIM
+  )
 endif()
 
 target_sources(EasyBridge PRIVATE
