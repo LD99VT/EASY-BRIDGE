@@ -1,13 +1,25 @@
 build/
-# Auto-generated from BridgeVersion.h.in — edit the VERSION in CMakeLists.txt
+dist/
+
+# Auto-generated version header
 Source/core/BridgeVersion.h
+
+# IDE
 .vscode/
 .idea/
 *.user
 *.suo
+
+# Compiler artifacts
 *.pdb
 *.obj
 *.ilk
 *.exp
 *.log
+
+# Installer binaries (built by CI — not committed to source)
+Installer/*.exe
+Installer/*.dmg
+
+# macOS
 .DS_Store

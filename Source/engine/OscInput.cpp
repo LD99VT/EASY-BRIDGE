@@ -1,4 +1,4 @@
-#include "OscInput.h"
+#include "inputs/OscInput.h"
 
 #include <cmath>
 #include <cstdint>

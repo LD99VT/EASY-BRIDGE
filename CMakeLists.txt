@@ -88,7 +88,7 @@ target_sources(EasyBridge PRIVATE
   Source/engine/BridgeEngine.cpp
   Source/engine/BridgeEngine.h
   Source/engine/OscInput.cpp
-  Source/engine/OscInput.h
+  Source/engine/inputs/OscInput.h
   Source/core/BridgeVersion.h
   Source/core/Timecode.cpp
   Source/core/Timecode.h

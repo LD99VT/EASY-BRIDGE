@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include "../vendor/timecode/EngineArtnetOutput.h"
+#include "../timecode/EngineArtnetOutput.h"
 
 namespace bridge::engine
 {
