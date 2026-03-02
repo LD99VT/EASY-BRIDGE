@@ -133,6 +133,32 @@
       font-size: 13px;
     }
 
+    /* ─── Language switcher ──────────────────────────── */
+    .lang-switcher { display: flex; gap: 6px; margin-bottom: 16px; padding-left: 4px; }
+    .lang-btn {
+      padding: 3px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--line);
+      background: var(--row);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .06em;
+      transition: background .12s, color .12s;
+    }
+    .lang-btn:hover { background: var(--panel); color: var(--text); }
+    .lang-btn.active { background: var(--accent); color: #111; border-color: var(--accent); }
+
+    /* Hide UA content by default */
+    [lang="ua"] { display: none; }
+    /* When UA active: hide EN, show UA */
+    html.lang-ua [lang="en"] { display: none; }
+    html.lang-ua [lang="ua"] { display: revert; }
+    html.lang-ua span[lang="ua"] { display: inline; }
+    html.lang-ua p[lang="ua"],
+    html.lang-ua div[lang="ua"] { display: block; }
+
     @media (max-width: 760px) {
       .layout { grid-template-columns: 1fr; }
       .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
@@ -145,24 +171,29 @@
 
   <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
   <nav class="sidebar">
-    <div class="sidebar-title">Contents</div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" data-lang="ua" onclick="setLang('ua')">UA</button>
+    </div>
+    <div class="sidebar-title">
+      <span lang="en">Contents</span><span lang="ua">Зміст</span>
+    </div>
     <ul class="nav">
-      <li><a href="#overview">Overview</a></li>
-      <li><a href="#header">Header</a></li>
-      <li><a href="#clock">Timecode Clock</a></li>
-      <li><a href="#source">Input Source</a></li>
-      <li><a href="#ltc-in">Input LTC</a></li>
-      <li><a href="#mtc-in">Input MTC</a></li>
-      <li><a href="#artnet-in">Input ArtNet</a></li>
-      <li><a href="#osc-in">Input OSC</a></li>
-      <li><a href="#ltc-out">Output LTC</a></li>
-      <li><a href="#mtc-out">Output MTC</a></li>
-      <li><a href="#artnet-out">Output ArtNet</a></li>
-      <li><a href="#status">Status Bar</a></li>
-      <li><a href="#status-monitor">Status Monitor</a></li>
-      <li><a href="#settings">Settings Menu</a></li>
-      <li><a href="#tray">System Tray</a></li>
-      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#header"><span lang="en">Header</span><span lang="ua">Заголовок</span></a></li>
+      <li><a href="#clock"><span lang="en">Timecode Clock</span><span lang="ua">Годинник тайм-коду</span></a></li>
+      <li><a href="#source"><span lang="en">Input Source</span><span lang="ua">Джерело входу</span></a></li>
+      <li><a href="#ltc-in"><span lang="en">Input LTC</span><span lang="ua">Вхід LTC</span></a></li>
+      <li><a href="#mtc-in"><span lang="en">Input MTC</span><span lang="ua">Вхід MTC</span></a></li>
+      <li><a href="#artnet-in"><span lang="en">Input ArtNet</span><span lang="ua">Вхід ArtNet</span></a></li>
+      <li><a href="#osc-in"><span lang="en">Input OSC</span><span lang="ua">Вхід OSC</span></a></li>
+      <li><a href="#ltc-out"><span lang="en">Output LTC</span><span lang="ua">Вихід LTC</span></a></li>
+      <li><a href="#mtc-out"><span lang="en">Output MTC</span><span lang="ua">Вихід MTC</span></a></li>
+      <li><a href="#artnet-out"><span lang="en">Output ArtNet</span><span lang="ua">Вихід ArtNet</span></a></li>
+      <li><a href="#status"><span lang="en">Status Bar</span><span lang="ua">Статус-бар</span></a></li>
+      <li><a href="#status-monitor"><span lang="en">Status Monitor</span><span lang="ua">Монітор статусу</span></a></li>
+      <li><a href="#settings"><span lang="en">Settings Menu</span><span lang="ua">Меню налаштувань</span></a></li>
+      <li><a href="#tray"><span lang="en">System Tray</span><span lang="ua">Системний трей</span></a></li>
+      <li><a href="#troubleshooting"><span lang="en">Troubleshooting</span><span lang="ua">Усунення несправностей</span></a></li>
     </ul>
   </nav>
 
@@ -172,192 +203,229 @@
     <!-- HERO -->
     <div class="hero">
       <h1>Easy Bridge</h1>
-      <div class="subtitle">Timecode Protocol Bridge – User Guide</div>
-      <div class="desc">
+      <div class="subtitle">
+        <span lang="en">Timecode Protocol Bridge – User Guide</span>
+        <span lang="ua">Міст протоколів тайм-коду – Посібник користувача</span>
+      </div>
+      <div class="desc" lang="en">
         Easy Bridge receives a timecode signal from one source (LTC audio, MTC MIDI, Art-Net, or OSC)
         and simultaneously re-transmits it as up to three outputs: <b>LTC audio</b>, <b>MTC MIDI</b>,
         and <b>Art-Net timecode</b>. Each output can be independently enabled, offset, and configured.
         The app runs as a background process and can minimise to the system tray.
       </div>
+      <div class="desc" lang="ua">
+        Easy Bridge отримує сигнал тайм-коду з одного джерела (LTC аудіо, MTC MIDI, Art-Net або OSC)
+        та одночасно ретранслює його до трьох виходів: <b>LTC аудіо</b>, <b>MTC MIDI</b>
+        та <b>Art-Net тайм-код</b>. Кожен вихід можна незалежно вмикати, зміщувати та налаштовувати.
+        Застосунок працює у фоновому режимі та може згортатися до системного трею.
+      </div>
     </div>
 
     <!-- ── HEADER ──────────────────────────────────────────────────────── -->
-    <h2 id="header">Header</h2>
-    <p>The top bar of the window. Contains the app name, current version number, and the Help button.</p>
+    <h2 id="header"><span lang="en">Header</span><span lang="ua">Заголовок</span></h2>
+    <p lang="en">The top bar of the window. Contains the app name, current version number, and the Help button.</p>
+    <p lang="ua">Верхня панель вікна. Містить назву застосунку, поточний номер версії та кнопку довідки.</p>
     <table class="fields">
-      <tr><th>Element</th><th>Description</th></tr>
-      <tr><td>EASY BRIDGE</td><td>Application title. The two words use different text colours to distinguish brand from product name.</td></tr>
-      <tr><td>Version label</td><td>Shows the current version (e.g. <code>v2.5.8</code>) in small text below the title.</td></tr>
-      <tr><td><code>?</code> button</td><td>Opens this help file in the system default browser. The file is located in the <code>Help/</code> folder next to the application executable.</td></tr>
+      <tr><th><span lang="en">Element</span><span lang="ua">Елемент</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td>EASY BRIDGE</td><td><span lang="en">Application title. The two words use different text colours to distinguish brand from product name.</span><span lang="ua">Назва застосунку. Два слова використовують різні кольори тексту для розрізнення бренду та назви продукту.</span></td></tr>
+      <tr><td><span lang="en">Version label</span><span lang="ua">Мітка версії</span></td><td><span lang="en">Shows the current version (e.g. <code>v2.5.8</code>) in small text below the title.</span><span lang="ua">Показує поточну версію (наприклад, <code>v2.5.8</code>) дрібним текстом під назвою.</span></td></tr>
+      <tr><td><code>?</code> <span lang="en">button</span><span lang="ua">кнопка</span></td><td><span lang="en">Opens this help file in the system default browser. The file is located in the <code>Help/</code> folder next to the application executable.</span><span lang="ua">Відкриває цей файл довідки у стандартному браузері системи. Файл розташований у папці <code>Help/</code> поряд з виконуваним файлом застосунку.</span></td></tr>
     </table>
 
     <!-- ── CLOCK ──────────────────────────────────────────────────────── -->
-    <h2 id="clock">Timecode Clock</h2>
-    <p>The large central display showing the decoded timecode in <code>HH:MM:SS:FF</code> format. Updated in real time as frames arrive from the active input source.</p>
+    <h2 id="clock"><span lang="en">Timecode Clock</span><span lang="ua">Годинник тайм-коду</span></h2>
+    <p lang="en">The large central display showing the decoded timecode in <code>HH:MM:SS:FF</code> format. Updated in real time as frames arrive from the active input source.</p>
+    <p lang="ua">Великий центральний дисплей, що показує розкодований тайм-код у форматі <code>HH:MM:SS:FF</code>. Оновлюється в реальному часі по мірі надходження кадрів від активного джерела входу.</p>
     <table class="fields">
-      <tr><th>Element</th><th>Description</th></tr>
-      <tr><td>Clock display</td><td>Shows the current timecode position. Stays at <code>00:00:00:00</code> when no valid signal is detected. The font is monospaced for stable digit width.</td></tr>
-      <tr><td>TC FPS label</td><td>Displayed below the clock. Shows the detected or configured frame rate (e.g. <code>TC FPS: 25</code>). Updates as the frame rate is identified from the incoming stream.</td></tr>
+      <tr><th><span lang="en">Element</span><span lang="ua">Елемент</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Clock display</span><span lang="ua">Дисплей годинника</span></td><td><span lang="en">Shows the current timecode position. Stays at <code>00:00:00:00</code> when no valid signal is detected. The font is monospaced for stable digit width.</span><span lang="ua">Показує поточну позицію тайм-коду. Залишається на <code>00:00:00:00</code>, коли валідний сигнал не виявлено. Шрифт моноширинний для стабільної ширини цифр.</span></td></tr>
+      <tr><td>TC FPS <span lang="en">label</span><span lang="ua">мітка</span></td><td><span lang="en">Displayed below the clock. Shows the detected or configured frame rate (e.g. <code>TC FPS: 25</code>). Updates as the frame rate is identified from the incoming stream.</span><span lang="ua">Відображається під годинником. Показує виявлену або налаштовану частоту кадрів (наприклад, <code>TC FPS: 25</code>). Оновлюється по мірі ідентифікації частоти кадрів з вхідного потоку.</span></td></tr>
     </table>
 
     <!-- ── INPUT SOURCE ───────────────────────────────────────────────── -->
-    <h2 id="source">Input Source</h2>
-    <p>A collapsible section that selects which timecode protocol is used as the active input. The expand/collapse arrow on the left toggles the visibility of all input rows to save screen space.</p>
+    <h2 id="source"><span lang="en">Input Source</span><span lang="ua">Джерело входу</span></h2>
+    <p lang="en">A collapsible section that selects which timecode protocol is used as the active input. The expand/collapse arrow on the left toggles the visibility of all input rows to save screen space.</p>
+    <p lang="ua">Розгортувана секція для вибору протоколу тайм-коду як активного входу. Стрілка розгортання/згортання ліворуч перемикає видимість усіх рядків входу для економії місця на екрані.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Source selector</td><td>Dropdown to choose the active input protocol: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, or <b>OSC</b>. Only the rows relevant to the selected source are used; the others are ignored.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Source selector</span><span lang="ua">Вибір джерела</span></td><td><span lang="en">Dropdown to choose the active input protocol: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, or <b>OSC</b>. Only the rows relevant to the selected source are used; the others are ignored.</span><span lang="ua">Розкривний список для вибору активного протоколу входу: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b> або <b>OSC</b>. Використовуються лише рядки відповідного джерела; інші ігноруються.</span></td></tr>
     </table>
-    <p>Switching the source immediately stops the previous listener and starts the new one. All output streams continue without interruption.</p>
+    <p lang="en">Switching the source immediately stops the previous listener and starts the new one. All output streams continue without interruption.</p>
+    <p lang="ua">Перемикання джерела негайно зупиняє попередній слухач і запускає новий. Усі вихідні потоки продовжують роботу без перерви.</p>
 
     <!-- ── INPUT LTC ──────────────────────────────────────────────────── -->
-    <h2 id="ltc-in">Input LTC</h2>
-    <p>Available when <b>LTC</b> is selected as the source. LTC (Linear Timecode) is encoded as an audio signal. The decoder listens on a selected audio input device and channel.</p>
+    <h2 id="ltc-in"><span lang="en">Input LTC</span><span lang="ua">Вхід LTC</span></h2>
+    <p lang="en">Available when <b>LTC</b> is selected as the source. LTC (Linear Timecode) is encoded as an audio signal. The decoder listens on a selected audio input device and channel.</p>
+    <p lang="ua">Доступно, коли <b>LTC</b> вибрано як джерело. LTC (Linear Timecode) кодується як аудіосигнал. Декодер прослуховує вибраний аудіовхідний пристрій та канал.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Driver</td><td>Selects the audio host API. Options depend on the operating system: <b>WASAPI</b> / <b>DirectSound</b> on Windows, <b>CoreAudio</b> on macOS. Selecting <b>Default (all devices)</b> lists every device regardless of driver. Use <b>ASIO</b> if you need ReaRoute or other ASIO devices (requires ASIO SDK build).</td></tr>
-      <tr><td>Device (Input)</td><td>The audio input device that carries the LTC signal. The list is filtered by the selected driver. Choose the device that is physically connected to your LTC source.</td></tr>
-      <tr><td>Channel</td><td>Which channel of the input device to decode. Options: 1–8 and <code>1+2</code> (stereo mix of channels 1 and 2). Most LTC setups use a single mono channel.</td></tr>
-      <tr><td>Sample Rate</td><td>The sample rate for the audio capture. Set to <b>Default</b> to use the device's current rate, or choose a specific rate (44100, 48000, 88200, 96000, 176400, 192000). Must match the device's configured rate.</td></tr>
-      <tr><td>Level meter</td><td>Horizontal bar showing the real-time input signal strength. A healthy LTC signal should have a consistent, moderate level — not silent and not clipping. If the bar is empty, check device/channel selection and verify that the source is transmitting.</td></tr>
-      <tr><td>Input Gain</td><td>Adjusts the input gain from <code>−24 dB</code> to <code>+24 dB</code> in 0.1 dB steps. The current value is shown to the right of the slider. Double-click the slider to reset it to 0 dB. Use this to normalise weak or overly hot LTC signals before decoding.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Driver</span><span lang="ua">Драйвер</span></td><td><span lang="en">Selects the audio host API. Options depend on the operating system: <b>WASAPI</b> / <b>DirectSound</b> on Windows, <b>CoreAudio</b> on macOS. Selecting <b>Default (all devices)</b> lists every device regardless of driver. Use <b>ASIO</b> if you need ReaRoute or other ASIO devices (requires ASIO SDK build).</span><span lang="ua">Вибирає аудіо API хоста. Опції залежать від ОС: <b>WASAPI</b> / <b>DirectSound</b> на Windows, <b>CoreAudio</b> на macOS. Вибір <b>Default (all devices)</b> показує всі пристрої незалежно від драйвера. Використовуйте <b>ASIO</b> для ReaRoute або інших ASIO-пристроїв (потребує збірки з ASIO SDK).</span></td></tr>
+      <tr><td><span lang="en">Device (Input)</span><span lang="ua">Пристрій (вхід)</span></td><td><span lang="en">The audio input device that carries the LTC signal. The list is filtered by the selected driver. Choose the device that is physically connected to your LTC source.</span><span lang="ua">Аудіовхідний пристрій, що несе сигнал LTC. Список фільтрується за вибраним драйвером. Виберіть пристрій, фізично підключений до джерела LTC.</span></td></tr>
+      <tr><td><span lang="en">Channel</span><span lang="ua">Канал</span></td><td><span lang="en">Which channel of the input device to decode. Options: 1–8 and <code>1+2</code> (stereo mix of channels 1 and 2). Most LTC setups use a single mono channel.</span><span lang="ua">Канал вхідного пристрою для декодування. Опції: 1–8 та <code>1+2</code> (стерео суміш каналів 1 і 2). Більшість налаштувань LTC використовують один моноканал.</span></td></tr>
+      <tr><td><span lang="en">Sample Rate</span><span lang="ua">Частота дискретизації</span></td><td><span lang="en">The sample rate for the audio capture. Set to <b>Default</b> to use the device's current rate, or choose a specific rate (44100, 48000, 88200, 96000, 176400, 192000). Must match the device's configured rate.</span><span lang="ua">Частота дискретизації для аудіозахоплення. Встановіть <b>Default</b> для використання поточної частоти пристрою або виберіть конкретну (44100, 48000, 88200, 96000, 176400, 192000). Повинна відповідати налаштованій частоті пристрою.</span></td></tr>
+      <tr><td><span lang="en">Level meter</span><span lang="ua">Індикатор рівня</span></td><td><span lang="en">Horizontal bar showing the real-time input signal strength. A healthy LTC signal should have a consistent, moderate level — not silent and not clipping. If the bar is empty, check device/channel selection and verify that the source is transmitting.</span><span lang="ua">Горизонтальна смуга рівня вхідного сигналу в реальному часі. Здоровий сигнал LTC повинен мати стабільний помірний рівень — не тихий і не перевантажений. Якщо смуга порожня, перевірте вибір пристрою/каналу та переконайтеся, що джерело передає сигнал.</span></td></tr>
+      <tr><td><span lang="en">Input Gain</span><span lang="ua">Вхідне посилення</span></td><td><span lang="en">Adjusts the input gain from <code>−24 dB</code> to <code>+24 dB</code> in 0.1 dB steps. The current value is shown to the right of the slider. Double-click the slider to reset it to 0 dB. Use this to normalise weak or overly hot LTC signals before decoding.</span><span lang="ua">Регулює вхідне посилення від <code>−24 дБ</code> до <code>+24 дБ</code> з кроком 0,1 дБ. Поточне значення відображається праворуч від повзунка. Двічі клацніть повзунок для скидання до 0 дБ. Використовуйте для нормалізації слабких або надто гучних сигналів LTC перед декодуванням.</span></td></tr>
     </table>
-    <div class="note">On Windows, ASIO (e.g. ReaRoute from Reaper) gives the lowest latency. WASAPI Exclusive and ASIO are preferred for reliable LTC decode over DirectSound.</div>
+    <div class="note" lang="en">On Windows, ASIO (e.g. ReaRoute from Reaper) gives the lowest latency. WASAPI Exclusive and ASIO are preferred for reliable LTC decode over DirectSound.</div>
+    <div class="note" lang="ua">На Windows ASIO (наприклад, ReaRoute від Reaper) забезпечує найнижчу затримку. WASAPI Exclusive та ASIO рекомендовані для надійного декодування LTC над DirectSound.</div>
 
     <!-- ── INPUT MTC ──────────────────────────────────────────────────── -->
-    <h2 id="mtc-in">Input MTC</h2>
-    <p>Available when <b>MTC</b> is selected as the source. MTC (MIDI Timecode) is received over a standard MIDI port.</p>
+    <h2 id="mtc-in"><span lang="en">Input MTC</span><span lang="ua">Вхід MTC</span></h2>
+    <p lang="en">Available when <b>MTC</b> is selected as the source. MTC (MIDI Timecode) is received over a standard MIDI port.</p>
+    <p lang="ua">Доступно, коли <b>MTC</b> вибрано як джерело. MTC (MIDI Timecode) приймається через стандартний MIDI-порт.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>MIDI Input</td><td>Dropdown listing all available MIDI input ports. Select the port that is sending MTC messages. Virtual ports (e.g. from DAWs) also appear here. If no ports are listed, ensure a MIDI driver is installed.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">MIDI Input</span><span lang="ua">MIDI-вхід</span></td><td><span lang="en">Dropdown listing all available MIDI input ports. Select the port that is sending MTC messages. Virtual ports (e.g. from DAWs) also appear here. If no ports are listed, ensure a MIDI driver is installed.</span><span lang="ua">Розкривний список усіх доступних MIDI-входів. Виберіть порт, що надсилає MTC-повідомлення. Також відображаються віртуальні порти (наприклад, з DAW). Якщо порти не перераховані, переконайтеся, що MIDI-драйвер встановлено.</span></td></tr>
     </table>
 
     <!-- ── INPUT ARTNET ───────────────────────────────────────────────── -->
-    <h2 id="artnet-in">Input ArtNet</h2>
-    <p>Available when <b>ArtNet</b> is selected as the source. Listens for Art-Net Timecode packets over UDP on port 6454.</p>
+    <h2 id="artnet-in"><span lang="en">Input ArtNet</span><span lang="ua">Вхід ArtNet</span></h2>
+    <p lang="en">Available when <b>ArtNet</b> is selected as the source. Listens for Art-Net Timecode packets over UDP on port 6454.</p>
+    <p lang="ua">Доступно, коли <b>ArtNet</b> вибрано як джерело. Прослуховує пакети Art-Net Timecode по UDP на порті 6454.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Adapter</td><td>Selects the local network interface to listen on. Choose the interface connected to your Art-Net network. <b>ALL INTERFACES</b> listens on all adapters simultaneously (binds to <code>0.0.0.0</code>).</td></tr>
-      <tr><td>Listen IP</td><td>Displays or overrides the bind IP address derived from the selected adapter. Normally auto-filled from the adapter selection. For manual entry use dotted-decimal notation (e.g. <code>192.168.1.10</code>). Use <code>0.0.0.0</code> for all interfaces.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Adapter</span><span lang="ua">Адаптер</span></td><td><span lang="en">Selects the local network interface to listen on. Choose the interface connected to your Art-Net network. <b>ALL INTERFACES</b> listens on all adapters simultaneously (binds to <code>0.0.0.0</code>).</span><span lang="ua">Вибирає локальний мережевий інтерфейс для прослуховування. Виберіть інтерфейс, підключений до мережі Art-Net. <b>ALL INTERFACES</b> прослуховує всі адаптери одночасно (прив'язується до <code>0.0.0.0</code>).</span></td></tr>
+      <tr><td><span lang="en">Listen IP</span><span lang="ua">IP прослуховування</span></td><td><span lang="en">Displays or overrides the bind IP address derived from the selected adapter. Normally auto-filled from the adapter selection. For manual entry use dotted-decimal notation (e.g. <code>192.168.1.10</code>). Use <code>0.0.0.0</code> for all interfaces.</span><span lang="ua">Відображає або замінює IP-адресу прив'язки від вибраного адаптера. Зазвичай заповнюється автоматично. Для ручного введення використовуйте десяткові крапкові позначення (наприклад, <code>192.168.1.10</code>). Використовуйте <code>0.0.0.0</code> для всіх інтерфейсів.</span></td></tr>
     </table>
-    <div class="note">Ensure UDP port <code>6454</code> is allowed by the firewall on the listening machine.</div>
+    <div class="note" lang="en">Ensure UDP port <code>6454</code> is allowed by the firewall on the listening machine.</div>
+    <div class="note" lang="ua">Переконайтеся, що UDP-порт <code>6454</code> дозволений брандмауером на машині, що прослуховує.</div>
 
     <!-- ── INPUT OSC ──────────────────────────────────────────────────── -->
-    <h2 id="osc-in">Input OSC</h2>
-    <p>Available when <b>OSC</b> is selected as the source. Receives timecode values over UDP via Open Sound Control messages. Compatible with Reaper and other DAWs that broadcast OSC position data.</p>
+    <h2 id="osc-in"><span lang="en">Input OSC</span><span lang="ua">Вхід OSC</span></h2>
+    <p lang="en">Available when <b>OSC</b> is selected as the source. Receives timecode values over UDP via Open Sound Control messages. Compatible with Reaper and other DAWs that broadcast OSC position data.</p>
+    <p lang="ua">Доступно, коли <b>OSC</b> вибрано як джерело. Отримує значення тайм-коду по UDP через повідомлення Open Sound Control. Сумісний з Reaper та іншими DAW, що транслюють позиційні дані OSC.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Adapter</td><td>Selects the local network interface to bind the OSC listener. <b>ALL INTERFACES (0.0.0.0)</b> or <b>Loopback (127.0.0.1)</b> for same-machine DAW use.</td></tr>
-      <tr><td>Listen IP</td><td>The IP address the OSC listener binds to. Auto-filled from the adapter. Can be overridden manually.</td></tr>
-      <tr><td>Port</td><td>UDP port number to receive OSC messages. Default is <code>9000</code>. Must match the port configured in the sending application. Accepts digits only, 1–65535.</td></tr>
-      <tr><td>FPS</td><td>Frame rate used to interpret incoming OSC float values. Options: <b>24, 25, 29.97, 30</b>. Set this to match the project frame rate in your DAW.</td></tr>
-      <tr><td>String address</td><td>OSC address pattern for string timecode messages (e.g. <code>/frames/str</code>). Expected format: <code>HH:MM:SS:FF</code> or <code>HH:MM:SS.FF</code>. Default is the Reaper string position path.</td></tr>
-      <tr><td>Float address</td><td>OSC address pattern for numeric position messages (e.g. <code>/time</code>). The float value is interpreted as seconds at the configured FPS. Default is the Reaper position float path.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Adapter</span><span lang="ua">Адаптер</span></td><td><span lang="en">Selects the local network interface to bind the OSC listener. <b>ALL INTERFACES (0.0.0.0)</b> or <b>Loopback (127.0.0.1)</b> for same-machine DAW use.</span><span lang="ua">Вибирає локальний мережевий інтерфейс для прив'язки слухача OSC. <b>ALL INTERFACES (0.0.0.0)</b> або <b>Loopback (127.0.0.1)</b> для використання з DAW на тій самій машині.</span></td></tr>
+      <tr><td><span lang="en">Listen IP</span><span lang="ua">IP прослуховування</span></td><td><span lang="en">The IP address the OSC listener binds to. Auto-filled from the adapter. Can be overridden manually.</span><span lang="ua">IP-адреса прив'язки слухача OSC. Заповнюється автоматично з адаптера. Можна замінити вручну.</span></td></tr>
+      <tr><td><span lang="en">Port</span><span lang="ua">Порт</span></td><td><span lang="en">UDP port number to receive OSC messages. Default is <code>9000</code>. Must match the port configured in the sending application. Accepts digits only, 1–65535.</span><span lang="ua">Номер UDP-порту для прийому OSC-повідомлень. За замовчуванням <code>9000</code>. Повинен відповідати порту, налаштованому в застосунку відправника. Лише цифри, 1–65535.</span></td></tr>
+      <tr><td>FPS</td><td><span lang="en">Frame rate used to interpret incoming OSC float values. Options: <b>24, 25, 29.97, 30</b>. Set this to match the project frame rate in your DAW.</span><span lang="ua">Частота кадрів для інтерпретації вхідних значень float OSC. Опції: <b>24, 25, 29.97, 30</b>. Встановіть відповідно до частоти кадрів проекту у вашому DAW.</span></td></tr>
+      <tr><td><span lang="en">String address</span><span lang="ua">Адреса рядка</span></td><td><span lang="en">OSC address pattern for string timecode messages (e.g. <code>/frames/str</code>). Expected format: <code>HH:MM:SS:FF</code> or <code>HH:MM:SS.FF</code>. Default is the Reaper string position path.</span><span lang="ua">Шаблон OSC-адреси для повідомлень тайм-коду у форматі рядка (наприклад, <code>/frames/str</code>). Очікуваний формат: <code>HH:MM:SS:FF</code> або <code>HH:MM:SS.FF</code>. За замовчуванням — шлях рядкової позиції Reaper.</span></td></tr>
+      <tr><td><span lang="en">Float address</span><span lang="ua">Адреса числа</span></td><td><span lang="en">OSC address pattern for numeric position messages (e.g. <code>/time</code>). The float value is interpreted as seconds at the configured FPS. Default is the Reaper position float path.</span><span lang="ua">Шаблон OSC-адреси для числових позиційних повідомлень (наприклад, <code>/time</code>). Значення float інтерпретується як секунди при налаштованій частоті кадрів. За замовчуванням — шлях позиційного float Reaper.</span></td></tr>
     </table>
 
     <!-- ── OUTPUT LTC ─────────────────────────────────────────────────── -->
-    <h2 id="ltc-out">Output LTC</h2>
-    <p>Generates an LTC audio signal from the decoded timecode and sends it to a selected audio output device. When <b>Thru</b> mode is active, the raw input audio is routed directly instead.</p>
+    <h2 id="ltc-out"><span lang="en">Output LTC</span><span lang="ua">Вихід LTC</span></h2>
+    <p lang="en">Generates an LTC audio signal from the decoded timecode and sends it to a selected audio output device. When <b>Thru</b> mode is active, the raw input audio is routed directly instead.</p>
+    <p lang="ua">Генерує аудіосигнал LTC з розкодованого тайм-коду та надсилає його до вибраного аудіовихідного пристрою. Коли активний режим <b>Thru</b>, вхідне аудіо передається безпосередньо без перетворення.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Out LTC toggle</td><td>Enable or disable the LTC output stream. When disabled, no audio is sent to the output device regardless of the Thru setting.</td></tr>
-      <tr><td>Thru dot</td><td>Clickable toggle in the section header. When <b>ON</b> (and the Out LTC switch is also ON), the raw LTC audio captured from the input device is passed directly to the selected output — no decode / re-encode cycle. This preserves the original signal bit-for-bit and eliminates encoder latency. When <b>OFF</b>, the normal timecode encoder output is used. The LTC input source must be running for Thru to produce audio.</td></tr>
-      <tr><td>Driver</td><td>Selects the audio host API for output (same options as Input Driver). ASIO is preferred for lowest latency.</td></tr>
-      <tr><td>Device (Output)</td><td>The audio output device to carry the LTC signal. Choose the device that connects to your downstream system.</td></tr>
-      <tr><td>Channel</td><td>Output channel to write the LTC signal to. Options: 1–8 and <code>1+2</code> (duplicated to both channels). Use <code>1+2</code> if your downstream device requires a stereo feed.</td></tr>
-      <tr><td>Sample Rate</td><td>Output sample rate. Must match the device's configured rate. Mismatched rates cause pitch-shifted or garbled LTC.</td></tr>
-      <tr><td>Offset</td><td>Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Not applied in Thru mode (the raw audio is not time-shifted). Use it in normal mode to compensate for downstream decoding latency.</td></tr>
-      <tr><td>Level</td><td>Output level in dB, range <code>−24 dB</code> to <code>+24 dB</code>. Sets the amplitude of the generated LTC audio signal. Double-click to reset to 0 dB. Adjust to match your device's expected input level.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Out LTC toggle</span><span lang="ua">Перемикач Out LTC</span></td><td><span lang="en">Enable or disable the LTC output stream. When disabled, no audio is sent to the output device regardless of the Thru setting.</span><span lang="ua">Вмикає або вимикає вихідний потік LTC. Коли вимкнено, аудіо не надсилається на вихідний пристрій незалежно від налаштування Thru.</span></td></tr>
+      <tr><td><span lang="en">Thru dot</span><span lang="ua">Крапка Thru</span></td><td><span lang="en">Clickable toggle in the section header. When <b>ON</b> (and the Out LTC switch is also ON), the raw LTC audio captured from the input device is passed directly to the selected output — no decode / re-encode cycle. This preserves the original signal bit-for-bit and eliminates encoder latency. When <b>OFF</b>, the normal timecode encoder output is used. The LTC input source must be running for Thru to produce audio.</span><span lang="ua">Клікабельний перемикач у заголовку секції. Коли <b>УВІМКНЕНО</b> (і перемикач Out LTC теж увімкнено), необроблений LTC-аудіо з вхідного пристрою передається безпосередньо на вихід без декодування/повторного кодування. Це зберігає оригінальний сигнал побітово та усуває затримку кодера. Коли <b>ВИМКНЕНО</b>, використовується нормальний вихід кодера тайм-коду. Джерело LTC-входу повинно бути запущено для роботи Thru.</span></td></tr>
+      <tr><td><span lang="en">Driver</span><span lang="ua">Драйвер</span></td><td><span lang="en">Selects the audio host API for output (same options as Input Driver). ASIO is preferred for lowest latency.</span><span lang="ua">Вибирає аудіо API хоста для виходу (ті самі опції, що й для вхідного драйвера). ASIO рекомендований для найнижчої затримки.</span></td></tr>
+      <tr><td><span lang="en">Device (Output)</span><span lang="ua">Пристрій (вихід)</span></td><td><span lang="en">The audio output device to carry the LTC signal. Choose the device that connects to your downstream system.</span><span lang="ua">Аудіовихідний пристрій для передачі сигналу LTC. Виберіть пристрій, підключений до вашої системи.</span></td></tr>
+      <tr><td><span lang="en">Channel</span><span lang="ua">Канал</span></td><td><span lang="en">Output channel to write the LTC signal to. Options: 1–8 and <code>1+2</code> (duplicated to both channels). Use <code>1+2</code> if your downstream device requires a stereo feed.</span><span lang="ua">Вихідний канал для запису сигналу LTC. Опції: 1–8 та <code>1+2</code> (дублюється на обидва канали). Використовуйте <code>1+2</code>, якщо ваш пристрій вимагає стерео-подачу.</span></td></tr>
+      <tr><td><span lang="en">Sample Rate</span><span lang="ua">Частота дискретизації</span></td><td><span lang="en">Output sample rate. Must match the device's configured rate. Mismatched rates cause pitch-shifted or garbled LTC.</span><span lang="ua">Частота дискретизації виходу. Повинна відповідати налаштованій частоті пристрою. Невідповідність частот спричиняє зсунутий або спотворений LTC.</span></td></tr>
+      <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Not applied in Thru mode (the raw audio is not time-shifted). Use it in normal mode to compensate for downstream decoding latency.</span><span lang="ua">Цілочисельне зміщення кадрів вихідного тайм-коду, діапазон від <code>−30</code> до <code>+30</code> кадрів. Не застосовується в режимі Thru. Використовуйте в нормальному режимі для компенсації затримки декодування.</span></td></tr>
+      <tr><td><span lang="en">Level</span><span lang="ua">Рівень</span></td><td><span lang="en">Output level in dB, range <code>−24 dB</code> to <code>+24 dB</code>. Sets the amplitude of the generated LTC audio signal. Double-click to reset to 0 dB. Adjust to match your device's expected input level.</span><span lang="ua">Рівень виходу в дБ, діапазон від <code>−24 дБ</code> до <code>+24 дБ</code>. Встановлює амплітуду згенерованого LTC-аудіосигналу. Двічі клацніть для скидання до 0 дБ. Регулюйте відповідно до очікуваного вхідного рівня пристрою.</span></td></tr>
     </table>
 
     <!-- ── OUTPUT MTC ─────────────────────────────────────────────────── -->
-    <h2 id="mtc-out">Output MTC</h2>
-    <p>Re-transmits decoded timecode as MIDI Timecode messages to a MIDI output port.</p>
+    <h2 id="mtc-out"><span lang="en">Output MTC</span><span lang="ua">Вихід MTC</span></h2>
+    <p lang="en">Re-transmits decoded timecode as MIDI Timecode messages to a MIDI output port.</p>
+    <p lang="ua">Повторно передає розкодований тайм-код як повідомлення MIDI Timecode до MIDI-виходу.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Out MTC toggle</td><td>Enable or disable MTC output. When disabled, no MIDI messages are sent.</td></tr>
-      <tr><td>MIDI Output</td><td>Destination MIDI port for MTC messages. Select the port connected to the target device (hardware or virtual).</td></tr>
-      <tr><td>Offset</td><td>Frame offset applied to MTC output, range <code>−30</code> to <code>+30</code> frames. Compensates for MIDI routing latency.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Out MTC toggle</span><span lang="ua">Перемикач Out MTC</span></td><td><span lang="en">Enable or disable MTC output. When disabled, no MIDI messages are sent.</span><span lang="ua">Вмикає або вимикає вихід MTC. Коли вимкнено, MIDI-повідомлення не надсилаються.</span></td></tr>
+      <tr><td><span lang="en">MIDI Output</span><span lang="ua">MIDI-вихід</span></td><td><span lang="en">Destination MIDI port for MTC messages. Select the port connected to the target device (hardware or virtual).</span><span lang="ua">Цільовий MIDI-порт для MTC-повідомлень. Виберіть порт, підключений до цільового пристрою (апаратного або віртуального).</span></td></tr>
+      <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Frame offset applied to MTC output, range <code>−30</code> to <code>+30</code> frames. Compensates for MIDI routing latency.</span><span lang="ua">Зміщення кадрів для виходу MTC, діапазон від <code>−30</code> до <code>+30</code> кадрів. Компенсує затримку маршрутизації MIDI.</span></td></tr>
     </table>
-    <div class="note"><b>MTC loop guard:</b> If the selected MTC Output port is the same as the MTC Input port (and MTC is the active source), the app will automatically switch the Output to the next available MIDI port. If no other port is available, MTC Output is disabled and a warning dialog is shown. This prevents MIDI feedback loops.</div>
+    <div class="note" lang="en"><b>MTC loop guard:</b> If the selected MTC Output port is the same as the MTC Input port (and MTC is the active source), the app will automatically switch the Output to the next available MIDI port. If no other port is available, MTC Output is disabled and a warning dialog is shown. This prevents MIDI feedback loops.</div>
+    <div class="note" lang="ua"><b>Захист від петлі MTC:</b> Якщо вибраний порт MTC-виходу збігається з портом MTC-входу (і MTC є активним джерелом), застосунок автоматично переключить вихід на наступний доступний MIDI-порт. Якщо інший порт недоступний, вихід MTC буде вимкнено і показано попереджуюче вікно. Це запобігає петлям зворотного зв'язку MIDI.</div>
 
     <!-- ── OUTPUT ARTNET ──────────────────────────────────────────────── -->
-    <h2 id="artnet-out">Output ArtNet</h2>
-    <p>Broadcasts Art-Net Timecode packets over UDP to one or more IP addresses.</p>
+    <h2 id="artnet-out"><span lang="en">Output ArtNet</span><span lang="ua">Вихід ArtNet</span></h2>
+    <p lang="en">Broadcasts Art-Net Timecode packets over UDP to one or more IP addresses.</p>
+    <p lang="ua">Транслює пакети Art-Net Timecode по UDP до однієї або кількох IP-адрес.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Out ArtNet toggle</td><td>Enable or disable Art-Net output.</td></tr>
-      <tr><td>Interface</td><td>Local network interface used for outgoing Art-Net packets. Choose the adapter on the same subnet as the destination devices.</td></tr>
-      <tr><td>Dest IP 1</td><td>Primary destination IP address. Use a broadcast address (e.g. <code>2.255.255.255</code> for Art-Net universe 0) or a specific unicast IP.</td></tr>
-      <tr><td>Dest IP 2–5</td><td>Additional destination IPs. Click the <code>+</code> button to add extra addresses (up to 4 extra). Click <code>−</code> to remove them. Each address receives the same Art-Net Timecode packet.</td></tr>
-      <tr><td>Offset</td><td>Frame offset applied to Art-Net output, range <code>−30</code> to <code>+30</code> frames.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Out ArtNet toggle</span><span lang="ua">Перемикач Out ArtNet</span></td><td><span lang="en">Enable or disable Art-Net output.</span><span lang="ua">Вмикає або вимикає вихід Art-Net.</span></td></tr>
+      <tr><td><span lang="en">Interface</span><span lang="ua">Інтерфейс</span></td><td><span lang="en">Local network interface used for outgoing Art-Net packets. Choose the adapter on the same subnet as the destination devices.</span><span lang="ua">Локальний мережевий інтерфейс для вихідних пакетів Art-Net. Виберіть адаптер у тій самій підмережі, що й цільові пристрої.</span></td></tr>
+      <tr><td>Dest IP 1</td><td><span lang="en">Primary destination IP address. Use a broadcast address (e.g. <code>2.255.255.255</code> for Art-Net universe 0) or a specific unicast IP.</span><span lang="ua">Основна IP-адреса призначення. Використовуйте широкомовну адресу (наприклад, <code>2.255.255.255</code> для всесвіту Art-Net 0) або конкретну одноадресну IP.</span></td></tr>
+      <tr><td>Dest IP 2–5</td><td><span lang="en">Additional destination IPs. Click the <code>+</code> button to add extra addresses (up to 4 extra). Click <code>−</code> to remove them. Each address receives the same Art-Net Timecode packet.</span><span lang="ua">Додаткові IP-адреси призначення. Натисніть кнопку <code>+</code>, щоб додати адреси (до 4 додаткових). Натисніть <code>−</code>, щоб видалити їх. Кожна адреса отримує однаковий пакет Art-Net Timecode.</span></td></tr>
+      <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Frame offset applied to Art-Net output, range <code>−30</code> to <code>+30</code> frames.</span><span lang="ua">Зміщення кадрів для виходу Art-Net, діапазон від <code>−30</code> до <code>+30</code> кадрів.</span></td></tr>
     </table>
 
     <!-- ── STATUS BAR ─────────────────────────────────────────────────── -->
-    <h2 id="status">Status Bar</h2>
-    <p>The status button spans the bottom of the parameter area and shows the current operational state in text form. Click it to open the <a href="#status-monitor">Status Monitor</a> window.</p>
+    <h2 id="status"><span lang="en">Status Bar</span><span lang="ua">Статус-бар</span></h2>
+    <p lang="en">The status button spans the bottom of the parameter area and shows the current operational state in text form. Click it to open the <a href="#status-monitor">Status Monitor</a> window.</p>
+    <p lang="ua">Кнопка статусу охоплює нижню частину зони параметрів і показує поточний робочий стан у текстовій формі. Клацніть, щоб відкрити вікно <a href="#status-monitor">Монітора статусу</a>.</p>
     <table class="fields">
-      <tr><th>State</th><th>Meaning</th></tr>
-      <tr><td><span class="ok">RUNNING – 25 FPS</span></td><td>Timecode is being received and decoded at the indicated frame rate.</td></tr>
-      <tr><td><span class="bad">STOPPED</span></td><td>No valid timecode is currently detected, or a configuration error prevents the listener from starting.</td></tr>
-      <tr><td><span class="bad">STOPPED – no MIDI input</span></td><td>MTC source is selected but no MIDI input port has been chosen or is available.</td></tr>
-      <tr><td><span class="bad">STOPPED – select LTC input</span></td><td>LTC source is selected but no audio input device has been chosen.</td></tr>
-      <tr><td><span class="bad">STOPPED – invalid OSC port</span></td><td>The OSC port field does not contain a valid integer.</td></tr>
-      <tr><td><span class="bad">STOPPED – ASIO driver failed</span></td><td>The ASIO backend could not initialise. Check that a 64-bit ASIO driver (e.g. ReaRoute x64) is installed.</td></tr>
+      <tr><th><span lang="en">State</span><span lang="ua">Стан</span></th><th><span lang="en">Meaning</span><span lang="ua">Значення</span></th></tr>
+      <tr><td><span class="ok">RUNNING – 25 FPS</span></td><td><span lang="en">Timecode is being received and decoded at the indicated frame rate.</span><span lang="ua">Тайм-код отримується та декодується із зазначеною частотою кадрів.</span></td></tr>
+      <tr><td><span class="bad">STOPPED</span></td><td><span lang="en">No valid timecode is currently detected, or a configuration error prevents the listener from starting.</span><span lang="ua">Валідний тайм-код не виявлено або помилка конфігурації перешкоджає запуску слухача.</span></td></tr>
+      <tr><td><span class="bad">STOPPED – no MIDI input</span></td><td><span lang="en">MTC source is selected but no MIDI input port has been chosen or is available.</span><span lang="ua">Вибрано джерело MTC, але MIDI-вхід не вибрано або недоступний.</span></td></tr>
+      <tr><td><span class="bad">STOPPED – select LTC input</span></td><td><span lang="en">LTC source is selected but no audio input device has been chosen.</span><span lang="ua">Вибрано джерело LTC, але аудіовхідний пристрій не вибрано.</span></td></tr>
+      <tr><td><span class="bad">STOPPED – invalid OSC port</span></td><td><span lang="en">The OSC port field does not contain a valid integer.</span><span lang="ua">Поле порту OSC не містить дійсного цілого числа.</span></td></tr>
+      <tr><td><span class="bad">STOPPED – ASIO driver failed</span></td><td><span lang="en">The ASIO backend could not initialise. Check that a 64-bit ASIO driver (e.g. ReaRoute x64) is installed.</span><span lang="ua">Бекенд ASIO не вдалося ініціалізувати. Перевірте, що 64-бітний ASIO-драйвер (наприклад, ReaRoute x64) встановлено.</span></td></tr>
     </table>
 
     <!-- ── STATUS MONITOR ─────────────────────────────────────────────── -->
-    <h2 id="status-monitor">Status Monitor Window</h2>
-    <p>Opened by clicking the status button. Shows real-time diagnostic information in a compact floating panel.</p>
+    <h2 id="status-monitor"><span lang="en">Status Monitor Window</span><span lang="ua">Вікно монітора статусу</span></h2>
+    <p lang="en">Opened by clicking the status button. Shows real-time diagnostic information in a compact floating panel.</p>
+    <p lang="ua">Відкривається натисканням на кнопку статусу. Показує діагностичну інформацію в реальному часі у компактній плаваючій панелі.</p>
     <table class="fields">
-      <tr><th>Field</th><th>Description</th></tr>
-      <tr><td>Input Timecode</td><td>The raw timecode value currently being decoded, in <code>HH:MM:SS:FF</code> format.</td></tr>
-      <tr><td>FPS</td><td>The frame rate actively detected or configured for the current input source.</td></tr>
-      <tr><td>LTC Output</td><td>Indicates whether LTC output is active and shows its configured frame offset.</td></tr>
-      <tr><td>MTC Output</td><td>Indicates whether MTC output is active and shows its configured frame offset.</td></tr>
-      <tr><td>ArtNet Output</td><td>Indicates whether Art-Net output is active and shows its configured frame offset.</td></tr>
-      <tr><td>Processing Latency</td><td>Internal processing delay displayed in milliseconds and frames. Useful for diagnosing sync drift.</td></tr>
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Input Timecode</span><span lang="ua">Вхідний тайм-код</span></td><td><span lang="en">The raw timecode value currently being decoded, in <code>HH:MM:SS:FF</code> format.</span><span lang="ua">Необроблене значення тайм-коду, що декодується в даний момент, у форматі <code>HH:MM:SS:FF</code>.</span></td></tr>
+      <tr><td>FPS</td><td><span lang="en">The frame rate actively detected or configured for the current input source.</span><span lang="ua">Частота кадрів, що активно виявляється або налаштована для поточного джерела входу.</span></td></tr>
+      <tr><td><span lang="en">LTC Output</span><span lang="ua">Вихід LTC</span></td><td><span lang="en">Indicates whether LTC output is active and shows its configured frame offset.</span><span lang="ua">Вказує, чи активний вихід LTC, і показує налаштоване зміщення кадрів.</span></td></tr>
+      <tr><td><span lang="en">MTC Output</span><span lang="ua">Вихід MTC</span></td><td><span lang="en">Indicates whether MTC output is active and shows its configured frame offset.</span><span lang="ua">Вказує, чи активний вихід MTC, і показує налаштоване зміщення кадрів.</span></td></tr>
+      <tr><td><span lang="en">ArtNet Output</span><span lang="ua">Вихід ArtNet</span></td><td><span lang="en">Indicates whether Art-Net output is active and shows its configured frame offset.</span><span lang="ua">Вказує, чи активний вихід Art-Net, і показує налаштоване зміщення кадрів.</span></td></tr>
+      <tr><td><span lang="en">Processing Latency</span><span lang="ua">Затримка обробки</span></td><td><span lang="en">Internal processing delay displayed in milliseconds and frames. Useful for diagnosing sync drift.</span><span lang="ua">Внутрішня затримка обробки в мілісекундах і кадрах. Корисно для діагностики зсуву синхронізації.</span></td></tr>
     </table>
 
     <!-- ── SETTINGS ───────────────────────────────────────────────────── -->
-    <h2 id="settings">Settings Menu</h2>
-    <p>Opened by clicking the <b>Settings</b> button at the bottom right. All configuration is stored in a single JSON file with a <code>.ebc</code> extension.</p>
+    <h2 id="settings"><span lang="en">Settings Menu</span><span lang="ua">Меню налаштувань</span></h2>
+    <p lang="en">Opened by clicking the <b>Settings</b> button at the bottom right. All configuration is stored in a single JSON file with a <code>.ebc</code> extension.</p>
+    <p lang="ua">Відкривається натисканням кнопки <b>Settings</b> внизу праворуч. Вся конфігурація зберігається в одному файлі JSON з розширенням <code>.ebc</code>.</p>
     <table class="fields">
-      <tr><th>Item</th><th>Description</th></tr>
-      <tr><td>Save config…</td><td>Opens a file save dialog. Writes the complete current configuration (all input, output, and UI settings) to a file you choose.</td></tr>
-      <tr><td>Load config…</td><td>Opens a file open dialog. Restores all settings from a previously saved config file. Audio and MIDI listeners restart automatically.</td></tr>
-      <tr><td>Reset config</td><td>Resets all settings to factory defaults without saving. The currently loaded file path is cleared.</td></tr>
-      <tr><td>Rescan audio devices</td><td>Re-enumerates audio devices in the background. Use this after connecting or disconnecting audio hardware, or after installing a new driver. Dropdowns are refreshed when the scan completes.</td></tr>
-      <tr><td>Load on startup</td><td>Toggle (checkbox). When enabled, the last saved/loaded config file is automatically loaded when the application starts. The setting itself is persisted to an internal preferences file.</td></tr>
-      <tr><td>Close to tray</td><td>Toggle (checkbox). When enabled, closing the main window minimises the app to the system tray instead of quitting it.</td></tr>
+      <tr><th><span lang="en">Item</span><span lang="ua">Пункт</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Save config…</span><span lang="ua">Зберегти конфіг…</span></td><td><span lang="en">Opens a file save dialog. Writes the complete current configuration (all input, output, and UI settings) to a file you choose.</span><span lang="ua">Відкриває діалог збереження файлу. Записує повну поточну конфігурацію (всі налаштування входу, виходу та інтерфейсу) до вибраного файлу.</span></td></tr>
+      <tr><td><span lang="en">Load config…</span><span lang="ua">Завантажити конфіг…</span></td><td><span lang="en">Opens a file open dialog. Restores all settings from a previously saved config file. Audio and MIDI listeners restart automatically.</span><span lang="ua">Відкриває діалог відкриття файлу. Відновлює всі налаштування з раніше збереженого файлу конфігурації. Слухачі аудіо та MIDI перезапускаються автоматично.</span></td></tr>
+      <tr><td><span lang="en">Reset config</span><span lang="ua">Скинути конфіг</span></td><td><span lang="en">Resets all settings to factory defaults without saving. The currently loaded file path is cleared.</span><span lang="ua">Скидає всі налаштування до заводських без збереження. Шлях до поточного завантаженого файлу очищається.</span></td></tr>
+      <tr><td><span lang="en">Rescan audio devices</span><span lang="ua">Пересканувати аудіопристрої</span></td><td><span lang="en">Re-enumerates audio devices in the background. Use this after connecting or disconnecting audio hardware, or after installing a new driver. Dropdowns are refreshed when the scan completes.</span><span lang="ua">Повторно перераховує аудіопристрої у фоновому режимі. Використовуйте після підключення або відключення аудіообладнання або після встановлення нового драйвера. Розкривні списки оновлюються після завершення сканування.</span></td></tr>
+      <tr><td><span lang="en">Load on startup</span><span lang="ua">Завантажувати при запуску</span></td><td><span lang="en">Toggle (checkbox). When enabled, the last saved/loaded config file is automatically loaded when the application starts. The setting itself is persisted to an internal preferences file.</span><span lang="ua">Перемикач (прапорець). Коли увімкнено, останній збережений/завантажений файл конфігурації автоматично завантажується при запуску застосунку. Налаштування зберігається у внутрішньому файлі налаштувань.</span></td></tr>
+      <tr><td><span lang="en">Close to tray</span><span lang="ua">Згортати в трей</span></td><td><span lang="en">Toggle (checkbox). When enabled, closing the main window minimises the app to the system tray instead of quitting it.</span><span lang="ua">Перемикач (прапорець). Коли увімкнено, закриття головного вікна мінімізує застосунок до системного трею замість виходу.</span></td></tr>
     </table>
 
     <!-- ── TRAY ───────────────────────────────────────────────────────── -->
-    <h2 id="tray">System Tray</h2>
-    <p>When <b>Close to tray</b> is enabled, the app icon appears in the system tray after the window is closed.</p>
+    <h2 id="tray"><span lang="en">System Tray</span><span lang="ua">Системний трей</span></h2>
+    <p lang="en">When <b>Close to tray</b> is enabled, the app icon appears in the system tray after the window is closed.</p>
+    <p lang="ua">Коли увімкнено <b>Close to tray</b>, іконка застосунку з'являється в системному треї після закриття вікна.</p>
     <table class="fields">
-      <tr><th>Action</th><th>Description</th></tr>
-      <tr><td>Left-click tray icon</td><td>Restores the main window.</td></tr>
-      <tr><td>Right-click tray icon → Show</td><td>Brings the window to the foreground.</td></tr>
-      <tr><td>Right-click tray icon → Quit</td><td>Terminates the application.</td></tr>
+      <tr><th><span lang="en">Action</span><span lang="ua">Дія</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td><span lang="en">Left-click tray icon</span><span lang="ua">Ліве клацання на іконці трею</span></td><td><span lang="en">Restores the main window.</span><span lang="ua">Відновлює головне вікно.</span></td></tr>
+      <tr><td><span lang="en">Right-click tray icon → Show</span><span lang="ua">Правий клік → Show</span></td><td><span lang="en">Brings the window to the foreground.</span><span lang="ua">Виводить вікно на передній план.</span></td></tr>
+      <tr><td><span lang="en">Right-click tray icon → Quit</span><span lang="ua">Правий клік → Quit</span></td><td><span lang="en">Terminates the application.</span><span lang="ua">Завершує роботу застосунку.</span></td></tr>
     </table>
 
     <!-- ── TROUBLESHOOTING ────────────────────────────────────────────── -->
-    <h2 id="troubleshooting">Troubleshooting</h2>
+    <h2 id="troubleshooting"><span lang="en">Troubleshooting</span><span lang="ua">Усунення несправностей</span></h2>
     <table class="fields">
-      <tr><th>Problem</th><th>What to check</th></tr>
-      <tr><td>Status stays STOPPED with LTC</td><td>Verify the correct input device and channel are selected. Check the Level meter — if it is empty, no audio is reaching the device. Adjust Input Gain if the signal is too weak. Confirm sample rate matches the device.</td></tr>
-      <tr><td>No MIDI ports listed</td><td>Install or reinstall your MIDI driver. On macOS the built-in IAC driver can be enabled in Audio MIDI Setup. On Windows use loopMIDI for virtual ports.</td></tr>
-      <tr><td>Art-Net not received</td><td>Check firewall rules for UDP port <code>6454</code>. Make sure the Listen IP matches the adapter connected to the Art-Net network.</td></tr>
-      <tr><td>OSC not received</td><td>Verify the Port matches the sender. Check the adapter / Listen IP setting. If sender and receiver are on the same machine, use <code>127.0.0.1</code>.</td></tr>
-      <tr><td>LTC output sounds distorted</td><td>Reduce the Output Level slider. The LTC signal should be clean; clipping causes decode failures downstream.</td></tr>
-      <tr><td>Sync drift between outputs</td><td>Use the Offset sliders on each output to compensate for downstream latency. Check Processing Latency in the Status Monitor window.</td></tr>
-      <tr><td>ASIO driver failed to load</td><td>Ensure you are running the 64-bit build of Easy Bridge and that a 64-bit ASIO driver is installed (e.g. ReaRoute x64 from Reaper).</td></tr>
-      <tr><td>Audio devices missing after reconnect</td><td>Use <b>Settings → Rescan audio devices</b> to refresh the device lists.</td></tr>
-      <tr><td>LTC Thru produces silence</td><td>Ensure the LTC Input source is selected and running (the Level meter should show a signal). Thru requires an active LTC input — it copies the same audio channel being decoded. Confirm the Out LTC switch is ON and the Thru dot is ON. Select the correct output device and channel.</td></tr>
-      <tr><td>MTC Output auto-switched or disabled unexpectedly</td><td>The MTC loop guard activated because the selected Output port matched the Input port while MTC was the active source. Choose a different Output port, or use a virtual MIDI loopback (e.g. loopMIDI) to create a separate port.</td></tr>
+      <tr><th><span lang="en">Problem</span><span lang="ua">Проблема</span></th><th><span lang="en">What to check</span><span lang="ua">Що перевірити</span></th></tr>
+      <tr><td><span lang="en">Status stays STOPPED with LTC</span><span lang="ua">Статус залишається STOPPED при LTC</span></td><td><span lang="en">Verify the correct input device and channel are selected. Check the Level meter — if it is empty, no audio is reaching the device. Adjust Input Gain if the signal is too weak. Confirm sample rate matches the device.</span><span lang="ua">Перевірте правильність вибору вхідного пристрою та каналу. Перевірте індикатор рівня — якщо він порожній, аудіо не надходить до пристрою. Відрегулюйте Input Gain, якщо сигнал занадто слабкий. Переконайтеся, що частота дискретизації відповідає пристрою.</span></td></tr>
+      <tr><td><span lang="en">No MIDI ports listed</span><span lang="ua">MIDI-порти не відображаються</span></td><td><span lang="en">Install or reinstall your MIDI driver. On macOS the built-in IAC driver can be enabled in Audio MIDI Setup. On Windows use loopMIDI for virtual ports.</span><span lang="ua">Встановіть або перевстановіть MIDI-драйвер. На macOS вбудований IAC-драйвер можна увімкнути в Audio MIDI Setup. На Windows використовуйте loopMIDI для віртуальних портів.</span></td></tr>
+      <tr><td><span lang="en">Art-Net not received</span><span lang="ua">Art-Net не приймається</span></td><td><span lang="en">Check firewall rules for UDP port <code>6454</code>. Make sure the Listen IP matches the adapter connected to the Art-Net network.</span><span lang="ua">Перевірте правила брандмауера для UDP-порту <code>6454</code>. Переконайтеся, що Listen IP відповідає адаптеру, підключеному до мережі Art-Net.</span></td></tr>
+      <tr><td><span lang="en">OSC not received</span><span lang="ua">OSC не приймається</span></td><td><span lang="en">Verify the Port matches the sender. Check the adapter / Listen IP setting. If sender and receiver are on the same machine, use <code>127.0.0.1</code>.</span><span lang="ua">Перевірте відповідність порту відправнику. Перевірте налаштування адаптера/Listen IP. Якщо відправник і приймач на одній машині, використовуйте <code>127.0.0.1</code>.</span></td></tr>
+      <tr><td><span lang="en">LTC output sounds distorted</span><span lang="ua">Вихід LTC звучить спотворено</span></td><td><span lang="en">Reduce the Output Level slider. The LTC signal should be clean; clipping causes decode failures downstream.</span><span lang="ua">Зменшіть повзунок рівня виходу. Сигнал LTC повинен бути чистим; перевантаження спричиняє помилки декодування.</span></td></tr>
+      <tr><td><span lang="en">Sync drift between outputs</span><span lang="ua">Зсув синхронізації між виходами</span></td><td><span lang="en">Use the Offset sliders on each output to compensate for downstream latency. Check Processing Latency in the Status Monitor window.</span><span lang="ua">Використовуйте повзунки Offset на кожному виході для компенсації затримки. Перевірте Processing Latency у вікні Монітора статусу.</span></td></tr>
+      <tr><td><span lang="en">ASIO driver failed to load</span><span lang="ua">ASIO-драйвер не завантажився</span></td><td><span lang="en">Ensure you are running the 64-bit build of Easy Bridge and that a 64-bit ASIO driver is installed (e.g. ReaRoute x64 from Reaper).</span><span lang="ua">Переконайтеся, що запущена 64-бітна збірка Easy Bridge і що встановлений 64-бітний ASIO-драйвер (наприклад, ReaRoute x64 від Reaper).</span></td></tr>
+      <tr><td><span lang="en">Audio devices missing after reconnect</span><span lang="ua">Аудіопристрої зникли після перепідключення</span></td><td><span lang="en">Use <b>Settings → Rescan audio devices</b> to refresh the device lists.</span><span lang="ua">Використовуйте <b>Settings → Rescan audio devices</b> для оновлення списків пристроїв.</span></td></tr>
+      <tr><td><span lang="en">LTC Thru produces silence</span><span lang="ua">LTC Thru не передає звук</span></td><td><span lang="en">Ensure the LTC Input source is selected and running (the Level meter should show a signal). Thru requires an active LTC input — it copies the same audio channel being decoded. Confirm the Out LTC switch is ON and the Thru dot is ON. Select the correct output device and channel.</span><span lang="ua">Переконайтеся, що джерело LTC Input вибрано та запущено (індикатор рівня повинен показувати сигнал). Thru вимагає активного LTC-входу. Переконайтеся, що перемикач Out LTC увімкнено і крапка Thru увімкнена. Виберіть правильний вихідний пристрій та канал.</span></td></tr>
+      <tr><td><span lang="en">MTC Output auto-switched or disabled unexpectedly</span><span lang="ua">MTC Output автоматично переключився або вимкнений</span></td><td><span lang="en">The MTC loop guard activated because the selected Output port matched the Input port while MTC was the active source. Choose a different Output port, or use a virtual MIDI loopback (e.g. loopMIDI) to create a separate port.</span><span lang="ua">Захист від петлі MTC активовано, оскільки вибраний порт виходу збігся з портом входу при активному MTC. Виберіть інший порт виходу або використовуйте віртуальний MIDI-зворотний зв'язок (наприклад, loopMIDI) для створення окремого порту.</span></td></tr>
     </table>
 
   </main>
 </div>
+<script>
+function setLang(l){
+  document.documentElement.className='lang-'+l;
+  localStorage.setItem('helpLang',l);
+  document.querySelectorAll('.lang-btn').forEach(function(b){
+    b.classList.toggle('active',b.dataset.lang===l);
+  });
+}
+(function(){ setLang(localStorage.getItem('helpLang')||'en'); })();
+</script>
 </body>
 </html>
