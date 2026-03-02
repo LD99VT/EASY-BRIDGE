@@ -17,14 +17,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-
-      - name: Verify submodule
-        shell: pwsh
-        run: |
-          if (!(Test-Path "third_party/SuperTimecodeConverter/TimecodeCore.h")) {
-            throw "Submodule missing: third_party/SuperTimecodeConverter"
-          }
 
       - name: Configure
         run: cmake --preset windows-msvc
@@ -53,10 +45,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-
-      - name: Verify submodule
-        run: test -f third_party/SuperTimecodeConverter/TimecodeCore.h || (echo "Submodule missing" && exit 1)
 
       - name: Configure
         run: cmake --preset macos-universal
@@ -84,16 +72,16 @@ jobs:
           MOUNT="/Volumes/${VOLNAME}"
           cp "Icons/Icon Bridge.icns" "$MOUNT/.VolumeIcon.icns"
           xcrun SetFile -a V "$MOUNT/.VolumeIcon.icns" 2>/dev/null || true
-          python3 - "$MOUNT" <<'PYEOF'
+          python3 -c "
 import struct, subprocess, sys
-path = sys.argv[1]
+path = '$MOUNT'
 r = subprocess.run(['xattr', '-px', 'com.apple.FinderInfo', path], capture_output=True, text=True)
 fi = bytearray.fromhex(r.stdout.strip().replace(' ', '').replace('\n', '')) if r.returncode == 0 and r.stdout.strip() else bytearray(32)
 while len(fi) < 32: fi.append(0)
 flags = struct.unpack('>H', fi[8:10])[0] | 0x0400
 struct.pack_into('>H', fi, 8, flags)
 subprocess.run(['xattr', '-wx', 'com.apple.FinderInfo', ' '.join(f'{b:02x}' for b in fi), path], check=True)
-PYEOF
+"
           hdiutil eject "$MOUNT" -quiet
           hdiutil convert "$DMG_RW" -ov -format UDZO -o "$DMG_PATH"
           rm -f "$DMG_RW"
