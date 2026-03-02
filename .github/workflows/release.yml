@@ -60,7 +60,7 @@ jobs:
           if [ -z "$APP_PATH" ]; then
             echo "ERROR: Easy Bridge.app not found" && exit 1
           fi
-          VERSION=$(grep -m1 'project(.*VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          VERSION=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' version.iss | head -1)
           VOLNAME="Easy Bridge ${VERSION}"
           STAGING=$(mktemp -d)
           cp -R "$APP_PATH"    "$STAGING/Easy Bridge.app"
