@@ -78,9 +78,17 @@ jobs:
           MOUNT_OUTPUT=$(hdiutil attach "$DMG_RW" -readwrite -nobrowse)
           echo "Attached: $MOUNT_OUTPUT"
           sleep 2
-          MOUNT="/Volumes/${VOLNAME}"
+          MOUNT=$(printf '%s\n' "$MOUNT_OUTPUT" | awk -F'\t' '/\/Volumes\// {print $NF}' | tail -n 1)
+          if [ -z "$MOUNT" ]; then
+            MOUNT=$(hdiutil info | awk -v dmg="$DMG_RW" '
+              $0 ~ dmg { found=1; next }
+              found && /\/Volumes\// { print $1; exit }
+            ')
+          fi
           if [ ! -d "$MOUNT" ]; then
-            echo "ERROR: Volume not mounted at $MOUNT"
+            echo "ERROR: Volume not mounted"
+            echo "Expected volume name: $VOLNAME"
+            echo "Resolved mount point: ${MOUNT:-<empty>}"
             ls /Volumes/
             exit 1
           fi
