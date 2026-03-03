@@ -6,6 +6,7 @@
 #define AppExe "Easy Bridge.exe"
 #define AppPublisher "LUA"
 #define BuildDir "build\windows-msvc\EasyBridge_artefacts\Release"
+#define IconFile "build\windows-msvc\generated\Icon_Bridge.ico"
 
 [Setup]
 AppName={#AppName}
@@ -16,7 +17,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 OutputBaseFilename=EasyBridge_Setup_{#AppVersion}
 OutputDir=Installer
-SetupIconFile={#BuildDir}\{#AppExe}
+SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2
 SolidCompression=yes
