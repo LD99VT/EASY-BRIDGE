@@ -4,11 +4,11 @@
 
 namespace bridge::platform
 {
-// ─── Locate project base directory (Fonts/, Help/, Icons/ siblings) ───────────
+// ─── Locate project base directory (Fonts/ and Help/ siblings) ────────────────
 // Searches from the executable upward to find the project root.
 juce::File findBridgeBaseDir();
 
-// ─── Load App_Icon.png from project Icons/ folder ─────────────────────────────
+// ─── Load app icon from platform-specific runtime assets ──────────────────────
 juce::Image loadBridgeAppIcon();
 
 #if JUCE_WINDOWS

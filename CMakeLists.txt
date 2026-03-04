@@ -82,15 +82,16 @@ if(APPLE)
     VERBATIM
   )
   add_custom_command(TARGET EasyBridge POST_BUILD
+    COMMAND /bin/rm -rf
+      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Icon"
+    COMMAND /bin/rm -rf
+      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Icons"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/Fonts"
       "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/Help"
       "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Help"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/Icons"
-      "$<TARGET_BUNDLE_CONTENT_DIR:EasyBridge>/Icons"
     COMMENT "Copying runtime assets into macOS bundle (Contents/)"
     VERBATIM
   )

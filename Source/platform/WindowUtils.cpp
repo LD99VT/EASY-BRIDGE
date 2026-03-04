@@ -7,6 +7,18 @@
 namespace bridge::platform
 {
 
+static juce::File getMacBundleResourcesDir()
+{
+#if JUCE_MAC
+    auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
+    auto resourcesDir = exeDir.getParentDirectory().getChildFile ("Resources");
+    if (resourcesDir.isDirectory())
+        return resourcesDir;
+#endif
+
+    return {};
+}
+
 juce::File findBridgeBaseDir()
 {
     auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
@@ -24,8 +36,7 @@ juce::File findBridgeBaseDir()
     for (auto r : roots)
     {
         if (r.getChildFile ("Fonts").isDirectory()
-            && r.getChildFile ("Help").isDirectory()
-            && r.getChildFile ("Icons").isDirectory())
+            && r.getChildFile ("Help").isDirectory())
             return r;
 
         const juce::StringArray names { "EASYBRIDGE-JUSE", "MTC_Bridge" };
@@ -34,8 +45,7 @@ juce::File findBridgeBaseDir()
             auto candidate = r.getChildFile (name);
             if (candidate.isDirectory()
                 && candidate.getChildFile ("Fonts").isDirectory()
-                && candidate.getChildFile ("Help").isDirectory()
-                && candidate.getChildFile ("Icons").isDirectory())
+                && candidate.getChildFile ("Help").isDirectory())
                 return candidate;
         }
     }
@@ -46,17 +56,23 @@ juce::File findBridgeBaseDir()
 juce::Image loadBridgeAppIcon()
 {
     auto base = findBridgeBaseDir();
-    if (! base.exists())
-        return {};
+    juce::File iconFile;
 
 #if JUCE_WINDOWS
-    auto iconFile = base.getChildFile ("Icons/Icon Bridge.ico");
+    if (! base.exists())
+        return {};
+    iconFile = base.getChildFile ("Icons/Icon Bridge.ico");
 #elif JUCE_MAC
-    auto iconFile = base.getChildFile ("Icons/Icon Bridge.icns");
+    iconFile = getMacBundleResourcesDir().getChildFile ("Icon Bridge.icns");
+    if (! iconFile.existsAsFile() && base.exists())
+        iconFile = base.getChildFile ("Icons/Icon Bridge.icns");
 #else
-    auto iconFile = base.getChildFile ("Icons/App_Icon.png");
+    if (! base.exists())
+        return {};
+    iconFile = base.getChildFile ("Icons/App_Icon.png");
 #endif
-    if (! iconFile.existsAsFile())
+
+    if (! iconFile.existsAsFile() && base.exists())
         iconFile = base.getChildFile ("Icons/App_Icon.png");
     if (! iconFile.existsAsFile())
         return {};
