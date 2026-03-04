@@ -64,11 +64,7 @@ endif()
 
 # macOS app bundle icon — copy .icns into Resources and set CFBundleIconFile
 if(APPLE)
-  if(USE_GENERATED_ICONS)
-    set(_bridge_icns "${GENERATED_ICNS_PATH}")
-  else()
-    set(_bridge_icns "${CMAKE_CURRENT_SOURCE_DIR}/Icons/Icon Bridge.icns")
-  endif()
+  set(_bridge_icns "${CMAKE_CURRENT_SOURCE_DIR}/Icons/Icon Bridge.icns")
   target_sources(EasyBridge PRIVATE "${_bridge_icns}")
   set_source_files_properties("${_bridge_icns}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   set_target_properties(EasyBridge PROPERTIES MACOSX_BUNDLE_ICON_FILE "${ICON_BUNDLE_NAME}")
