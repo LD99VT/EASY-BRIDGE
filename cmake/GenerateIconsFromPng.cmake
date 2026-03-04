@@ -25,6 +25,24 @@ if(NOT _img_convert)
   return()
 endif()
 
+set(_icns_png_abs "${_png_abs}")
+if(APPLE)
+  set(_bridge_icon_prep "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate_bridge_macos_icon.swift")
+  find_program(_xcrun NAMES xcrun)
+  if(EXISTS "${_bridge_icon_prep}" AND _xcrun)
+    get_filename_component(_png_name_we "${PNG_ICON_SOURCE}" NAME_WE)
+    set(_icns_png_abs "${CMAKE_CURRENT_BINARY_DIR}/generated/${_png_name_we} macOS.png")
+    add_custom_command(OUTPUT "${_icns_png_abs}"
+      COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+      COMMAND "${_xcrun}" swift "${_bridge_icon_prep}" "${_png_abs}" "${_icns_png_abs}"
+      MAIN_DEPENDENCY "${_png_abs}"
+      DEPENDS "${_bridge_icon_prep}"
+      COMMENT "Preparing macOS app icon source from ${PNG_ICON_SOURCE}"
+      VERBATIM
+    )
+  endif()
+endif()
+
 string(REPLACE " " "_" _ico_stem "${ICON_OUTPUT_BASE}")
 set(_gen_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(_ico_out "${_gen_dir}/${_ico_stem}.ico")
@@ -60,14 +78,14 @@ if(APPLE)
     list(APPEND _deplist "${_p1}" "${_p2}")
     add_custom_command(OUTPUT "${_p1}"
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${_iconset}"
-      COMMAND "${_img_convert}" "${_png_abs}" -resize "${_s}x${_s}" "${_p1}"
-      MAIN_DEPENDENCY "${_png_abs}"
+      COMMAND "${_img_convert}" "${_icns_png_abs}" -resize "${_s}x${_s}" "${_p1}"
+      MAIN_DEPENDENCY "${_icns_png_abs}"
       COMMENT "ICNS iconset ${_p1}"
       VERBATIM
     )
     add_custom_command(OUTPUT "${_p2}"
-      COMMAND "${_img_convert}" "${_png_abs}" -resize "${_s2}x${_s2}" "${_p2}"
-      MAIN_DEPENDENCY "${_png_abs}"
+      COMMAND "${_img_convert}" "${_icns_png_abs}" -resize "${_s2}x${_s2}" "${_p2}"
+      MAIN_DEPENDENCY "${_icns_png_abs}"
       COMMENT "ICNS iconset ${_p2}"
       VERBATIM
     )
@@ -75,7 +93,7 @@ if(APPLE)
   add_custom_command(OUTPUT "${_icns_out}"
     COMMAND iconutil --convert icns --output "${_icns_out}" "${_iconset}"
     DEPENDS ${_deplist}
-    MAIN_DEPENDENCY "${_png_abs}"
+    MAIN_DEPENDENCY "${_icns_png_abs}"
     COMMENT "Generating .icns from ${PNG_ICON_SOURCE}"
     VERBATIM
   )
