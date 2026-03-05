@@ -4,6 +4,10 @@
 
 Receive timecode in one format — send it out in another, simultaneously, with minimal latency.
 
+## Screenshot
+
+![Easy Bridge UI](ScreanShot/ScreanShot.png)
+
 ---
 
 ## Supported formats
