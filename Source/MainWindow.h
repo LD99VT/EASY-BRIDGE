@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <condition_variable>
@@ -33,6 +34,9 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     bool closeToTrayEnabled() const { return closeToTray_; }
+    void prepareStartupStateBeforeShow();
+    bool shouldPromptSaveOnClose() const;
+    void saveConfigForExit (std::function<void(bool)> onDone);
 
 private:
     friend class BridgeAudioScanThread;
@@ -67,10 +71,14 @@ private:
     void setStatusText (const juce::String& text, juce::Colour colour);
     void openStatusMonitorWindow();
     void openSettingsMenu();
+    void saveConfig();
     void saveConfigAs();
     void loadConfigFrom();
-    void saveConfigToFile (const juce::File& cfgFile);
+    bool saveConfigToFile (const juce::File& cfgFile);
     void loadConfigFromFile (const juce::File& cfgFile);
+    juce::var buildConfigState() const;
+    bool isCurrentConfigEqualToSavedFile() const;
+    void refreshConfigDirtyState();
     juce::File prefsFilePath() const;
     void loadRuntimePrefs();
     void saveRuntimePrefs() const;
@@ -107,9 +115,13 @@ private:
     juce::TextButton quitButton_ { "Quit" };
     bool closeToTray_ { false };
     bool autoLoadOnStartup_ { false };
+    bool configDirty_ { true };
+    bool suppressConfigDirtyTracking_ { false };
+    juce::String lastSavedConfigState_;
     juce::File lastConfigFile_;
     std::unique_ptr<juce::FileChooser> saveChooser_;
     std::unique_ptr<juce::FileChooser> loadChooser_;
+    std::function<void(bool)> pendingSaveCallback_;
     std::thread ltcOutputApplyThread_;
     std::mutex ltcOutputApplyMutex_;
     std::condition_variable ltcOutputApplyCv_;
@@ -229,7 +241,11 @@ public:
     void quitFromTray();
 
 private:
+    void requestQuitWithSavePrompt();
+    void handleClosePromptResult (int action);
+
     std::unique_ptr<juce::SystemTrayIconComponent> trayIcon_;
     bool quittingFromMenu_ { false };
+    bool closePromptOpen_ { false };
 };
 } // namespace bridge

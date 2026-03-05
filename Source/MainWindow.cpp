@@ -98,6 +98,29 @@ bool matchesDriverFilter (const juce::String& driverUi, const juce::String& type
     return t == d;
 }
 
+bool varsEqualConfig (const juce::var& a, const juce::var& b)
+{
+    if (a.isArray() || b.isArray())
+    {
+        auto* aa = a.getArray();
+        auto* bb = b.getArray();
+        if (aa == nullptr || bb == nullptr || aa->size() != bb->size())
+            return false;
+        for (int i = 0; i < aa->size(); ++i)
+            if (! varsEqualConfig ((*aa)[i], (*bb)[i]))
+                return false;
+        return true;
+    }
+
+    if (a.isBool() || b.isBool())
+        return (bool) a == (bool) b;
+
+    if (a.isInt() || a.isInt64() || a.isDouble() || b.isInt() || b.isInt64() || b.isDouble())
+        return juce::approximatelyEqual ((double) a, (double) b);
+
+    return a.toString().trim() == b.toString().trim();
+}
+
 void fillDriverCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices, const juce::String& previousText)
 {
     combo.clear();
@@ -180,6 +203,115 @@ public:
 
 private:
     MainWindow& owner_;
+};
+
+class ExitSavePromptDialog final : public juce::DocumentWindow
+{
+public:
+    static void show (juce::Component* relativeTo,
+                      std::function<void(int)> onDone)
+    {
+        new ExitSavePromptDialog (relativeTo, std::move (onDone));
+    }
+
+    void closeButtonPressed() override
+    {
+        finishAndClose (0);
+    }
+
+private:
+    ExitSavePromptDialog (juce::Component* relativeTo,
+                          std::function<void(int)> onDone)
+        : juce::DocumentWindow ("Close Easy Bridge",
+                                juce::Colour::fromRGB (0x1e, 0x1e, 0x1e),
+                                juce::DocumentWindow::closeButton),
+          onDone_ (std::move (onDone))
+    {
+        setUsingNativeTitleBar (true);
+        setResizable (false, false);
+        setContentOwned (new Content (*this), true);
+        centreWithSize (450, 190);
+        if (relativeTo != nullptr)
+        {
+            const auto rc = relativeTo->getScreenBounds();
+            setBounds (rc.getCentreX() - 225, rc.getCentreY() - 95, 450, 190);
+        }
+        setVisible (true);
+#if JUCE_WINDOWS
+        platform::applyNativeDarkTitleBar (*this);
+        platform::applyNativeFixedWindow (*this);
+        platform::removeNativeTitleBarIcon (*this);
+#endif
+        toFront (true);
+    }
+
+    void finishAndClose (int result)
+    {
+        if (onDone_ != nullptr)
+            onDone_ (result);
+
+        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<ExitSavePromptDialog> (this)]
+        {
+            if (auto* w = safe.getComponent())
+                delete w;
+        });
+    }
+
+    struct Content final : juce::Component
+    {
+        explicit Content (ExitSavePromptDialog& owner) : owner_ (owner)
+        {
+            msg_.setText ("Configuration has unsaved changes.\nSave config before exit?",
+                          juce::dontSendNotification);
+            msg_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe0, 0xe0, 0xe0));
+            msg_.setJustificationType (juce::Justification::centred);
+            addAndMakeVisible (msg_);
+
+            setupButton (saveBtn_, "Save", [this] { owner_.finishAndClose (1); });
+            setupButton (exitBtn_, "Exit", [this] { owner_.finishAndClose (2); });
+            setupButton (cancelBtn_, "Cancel", [this] { owner_.finishAndClose (0); });
+            addAndMakeVisible (saveBtn_);
+            addAndMakeVisible (exitBtn_);
+            addAndMakeVisible (cancelBtn_);
+        }
+
+        void resized() override
+        {
+            constexpr int kPad = 20;
+            msg_.setBounds (kPad, kPad, getWidth() - kPad * 2, 90);
+            const int y = getHeight() - 50;
+            const int w = 120;
+            const int gap = 10;
+            const int total = w * 3 + gap * 2;
+            int x = (getWidth() - total) / 2;
+            saveBtn_.setBounds (x, y, w, 32); x += w + gap;
+            exitBtn_.setBounds (x, y, w, 32); x += w + gap;
+            cancelBtn_.setBounds (x, y, w, 32);
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            g.fillAll (juce::Colour::fromRGB (0x17, 0x17, 0x17));
+        }
+
+        static void setupButton (juce::TextButton& btn,
+                                 const juce::String& text,
+                                 std::function<void()> onClick)
+        {
+            btn.setButtonText (text);
+            btn.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+            btn.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+            btn.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+            btn.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xe1, 0xe6, 0xef));
+            btn.onClick = std::move (onClick);
+        }
+
+        ExitSavePromptDialog& owner_;
+        juce::Label msg_;
+        juce::TextButton saveBtn_, exitBtn_, cancelBtn_;
+    };
+
+    std::function<void(int)> onDone_;
 };
 
 static int findFilteredIndex (const juce::Array<int>& filteredIndices,
@@ -372,7 +504,13 @@ MainContentComponent::MainContentComponent()
     quitButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0xb6, 0x45, 0x40));
     quitButton_.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     quitButton_.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-    quitButton_.onClick = [] { juce::JUCEApplication::getInstance()->systemRequestedQuit(); };
+    quitButton_.onClick = [this]
+    {
+        if (auto* window = findParentComponentOfClass<MainWindow>())
+            window->quitFromTray();
+        else
+            juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    };
     addAndMakeVisible (quitButton_);
 
     sourceCombo_.addItem ("LTC", 1);
@@ -506,7 +644,7 @@ MainContentComponent::MainContentComponent()
     for (auto* c : { &ltcOutSwitch_, &mtcOutSwitch_, &artnetOutSwitch_ })
         rowsPanel_->addAndMakeVisible (*c);
     rowsPanel_->addAndMakeVisible (ltcThruDot_);
-    ltcThruDot_.onToggle = [this] (bool) { queueLtcOutputApply(); };
+    ltcThruDot_.onToggle = [this] (bool) { queueLtcOutputApply(); refreshConfigDirtyState(); };
     ltcThruLbl_.setColour (juce::Label::textColourId, juce::Colour::fromRGB (0xe4, 0xe4, 0xe4));
     ltcThruLbl_.setJustificationType (juce::Justification::centredLeft);
     rowsPanel_->addAndMakeVisible (ltcThruLbl_);
@@ -518,13 +656,20 @@ MainContentComponent::MainContentComponent()
             &mtcInCombo_, &artnetInCombo_, &mtcOutCombo_, &artnetOutCombo_, &oscFpsCombo_ })
     {
         rowsPanel_->addAndMakeVisible (*c);
-        c->onChange = [this] { onInputSettingsChanged(); };
+        c->onChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
     }
-    artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); };
-    oscFloatTypeCombo_.onChange = [this] { resized(); onInputSettingsChanged(); };
-    oscFloatMaxEditor_.onTextChange = [this] { onInputSettingsChanged(); };
+    artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscIpEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscPortEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscAddrStrEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscAddrFloatEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscFloatTypeCombo_.onChange = [this] { resized(); onInputSettingsChanged(); refreshConfigDirtyState(); };
+    oscFloatMaxEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    ltcOffsetEditor_.onTextChange = [this] { refreshConfigDirtyState(); };
+    mtcOffsetEditor_.onTextChange = [this] { refreshConfigDirtyState(); };
+    artnetOffsetEditor_.onTextChange = [this] { refreshConfigDirtyState(); };
     for (auto& e : artnetDestIpEditors_)
-        e.onTextChange = [this] { onOutputSettingsChanged(); };
+        e.onTextChange = [this] { onOutputSettingsChanged(); refreshConfigDirtyState(); };
     for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
     {
         artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
@@ -545,6 +690,7 @@ MainContentComponent::MainContentComponent()
                 updateWindowHeight();
                 resized();
                 onOutputSettingsChanged();
+                refreshConfigDirtyState();
             }
         };
         rowsPanel_->addAndMakeVisible (artnetDestRemoveButtons_[i]);
@@ -561,16 +707,21 @@ MainContentComponent::MainContentComponent()
             updateArtnetIpControls();
             updateWindowHeight();
             resized();
+            refreshConfigDirtyState();
         }
     };
     rowsPanel_->addAndMakeVisible (artnetAddIpButton_);
     ltcInDriverCombo_.onChange = [this]
     {
         refreshLtcDeviceListsByDriver();
+        onInputSettingsChanged();
+        refreshConfigDirtyState();
     };
     ltcOutDriverCombo_.onChange = [this]
     {
         refreshLtcDeviceListsByDriver();
+        onOutputSettingsChanged();
+        refreshConfigDirtyState();
     };
     oscAdapterCombo_.onChange = [this]
     {
@@ -588,6 +739,7 @@ MainContentComponent::MainContentComponent()
             // pre-configured Out port that matches In is caught immediately.
             if (sourceCombo_.getSelectedId() == 2)
                 onOutputSettingsChanged();
+            refreshConfigDirtyState();
         };
 
     ltcOutSwitch_.onToggle = [this] (bool) { onOutputToggleChanged(); };
@@ -595,7 +747,7 @@ MainContentComponent::MainContentComponent()
     artnetOutSwitch_.onToggle = [this] (bool) { onOutputToggleChanged(); };
 
     for (auto* c : { &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_, &mtcOutCombo_, &artnetOutCombo_ })
-        c->onChange = [this] { onOutputSettingsChanged(); };
+        c->onChange = [this] { onOutputSettingsChanged(); refreshConfigDirtyState(); };
 
     // MTC loop guard: re-check when MTC In device changes while source is MTC.
     mtcInCombo_.onChange = [this]
@@ -603,6 +755,7 @@ MainContentComponent::MainContentComponent()
         onInputSettingsChanged();
         if (sourceCombo_.getSelectedId() == 2)
             onOutputSettingsChanged();
+        refreshConfigDirtyState();
     };
 
     rowsPanel_->addAndMakeVisible (ltcInGainSlider_);
@@ -632,18 +785,6 @@ MainContentComponent::MainContentComponent()
 
     setSize (430, calcPreferredHeight());
     resized();
-    // Parent window may not be attached yet inside the component ctor.
-    juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainContentComponent> (this)]
-    {
-        if (safe != nullptr)
-        {
-            // Defer runtime init so the first frame can paint immediately.
-            safe->startAudioDeviceScan();
-            safe->loadRuntimePrefs();
-            safe->maybeAutoLoadConfig();
-            safe->updateWindowHeight();
-        }
-    });
     startTimerHz (60);
 }
 
@@ -1271,6 +1412,7 @@ void MainContentComponent::onOutputToggleChanged()
 
     bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
+    refreshConfigDirtyState();
 }
 
 void MainContentComponent::onOutputSettingsChanged()
@@ -1700,6 +1842,175 @@ void MainContentComponent::openStatusMonitorWindow()
     statusMonitor_ = win;
 }
 
+juce::var MainContentComponent::buildConfigState() const
+{
+    juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+    obj->setProperty ("source", sourceCombo_.getSelectedId());
+    obj->setProperty ("source_expanded", sourceExpanded_);
+    obj->setProperty ("out_ltc_expanded", outLtcExpanded_);
+    obj->setProperty ("out_mtc_expanded", outMtcExpanded_);
+    obj->setProperty ("out_artnet_expanded", outArtExpanded_);
+    obj->setProperty ("close_to_tray", closeToTray_);
+    obj->setProperty ("ltc_in_driver", ltcInDriverCombo_.getText());
+    obj->setProperty ("ltc_out_driver", ltcOutDriverCombo_.getText());
+    obj->setProperty ("ltc_in_device", ltcInDeviceCombo_.getText());
+    obj->setProperty ("ltc_in_channel", ltcInChannelCombo_.getText());
+    obj->setProperty ("ltc_in_rate", ltcInSampleRateCombo_.getText());
+    obj->setProperty ("ltc_in_gain_db", ltcInGainSlider_.getValue());
+    obj->setProperty ("ltc_out_device", ltcOutDeviceCombo_.getText());
+    obj->setProperty ("ltc_out_channel", ltcOutChannelCombo_.getText());
+    obj->setProperty ("ltc_out_rate", ltcOutSampleRateCombo_.getText());
+    obj->setProperty ("ltc_out_gain_db", ltcOutLevelSlider_.getValue());
+    obj->setProperty ("ltc_out_enabled", ltcOutSwitch_.getState());
+    obj->setProperty ("ltc_thru_enabled", ltcThruDot_.getState());
+    obj->setProperty ("mtc_in", mtcInCombo_.getText());
+    obj->setProperty ("mtc_out", mtcOutCombo_.getText());
+    obj->setProperty ("mtc_out_enabled", mtcOutSwitch_.getState());
+    obj->setProperty ("artnet_in", artnetInCombo_.getText());
+    obj->setProperty ("artnet_out", artnetOutCombo_.getText());
+    obj->setProperty ("artnet_out_enabled", artnetOutSwitch_.getState());
+    obj->setProperty ("artnet_listen_ip", artnetListenIpEditor_.getText());
+    obj->setProperty ("osc_adapter", oscAdapterCombo_.getText());
+    obj->setProperty ("osc_ip", oscIpEditor_.getText());
+    obj->setProperty ("osc_port", oscPortEditor_.getText());
+    obj->setProperty ("osc_fps", oscFpsCombo_.getText());
+    obj->setProperty ("osc_str", oscAddrStrEditor_.getText());
+    obj->setProperty ("osc_float", oscAddrFloatEditor_.getText());
+    obj->setProperty ("osc_float_type", oscFloatTypeCombo_.getSelectedId());
+    obj->setProperty ("osc_float_max", oscFloatMaxEditor_.getText());
+
+    juce::Array<juce::var> artnetTargetsVar;
+    const auto artnetTargets = collectArtnetTargets();
+    for (const auto& ip : artnetTargets)
+        artnetTargetsVar.add (ip);
+    obj->setProperty ("artnet_targets", juce::var (artnetTargetsVar));
+    obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0]);
+    obj->setProperty ("ltc_offset", ltcOffsetEditor_.getText());
+    obj->setProperty ("mtc_offset", mtcOffsetEditor_.getText());
+    obj->setProperty ("artnet_offset", artnetOffsetEditor_.getText());
+    return juce::var (obj.get());
+}
+
+void MainContentComponent::refreshConfigDirtyState()
+{
+    if (suppressConfigDirtyTracking_)
+        return;
+    configDirty_ = true;
+}
+
+bool MainContentComponent::isCurrentConfigEqualToSavedFile() const
+{
+    if (! lastConfigFile_.existsAsFile())
+        return false;
+
+    const auto parsed = juce::JSON::parse (lastConfigFile_);
+    auto* savedObj = parsed.getDynamicObject();
+    if (savedObj == nullptr)
+        return false;
+
+    const auto current = buildConfigState();
+    auto* currentObj = current.getDynamicObject();
+    if (currentObj == nullptr)
+        return false;
+
+    static constexpr const char* kConfigKeys[] = {
+        "source",
+        "source_expanded",
+        "out_ltc_expanded",
+        "out_mtc_expanded",
+        "out_artnet_expanded",
+        "close_to_tray",
+        "ltc_in_driver",
+        "ltc_out_driver",
+        "ltc_in_device",
+        "ltc_in_channel",
+        "ltc_in_rate",
+        "ltc_in_gain_db",
+        "ltc_out_device",
+        "ltc_out_channel",
+        "ltc_out_rate",
+        "ltc_out_gain_db",
+        "ltc_out_enabled",
+        "ltc_thru_enabled",
+        "mtc_in",
+        "mtc_out",
+        "mtc_out_enabled",
+        "artnet_in",
+        "artnet_out",
+        "artnet_out_enabled",
+        "artnet_listen_ip",
+        "osc_adapter",
+        "osc_ip",
+        "osc_port",
+        "osc_fps",
+        "osc_str",
+        "osc_float",
+        "osc_float_type",
+        "osc_float_max",
+        "artnet_targets",
+        "artnet_dest",
+        "ltc_offset",
+        "mtc_offset",
+        "artnet_offset"
+    };
+
+    for (const auto* key : kConfigKeys)
+    {
+        const juce::Identifier id (key);
+        if (! savedObj->hasProperty (id))
+            continue;
+
+        if (! varsEqualConfig (savedObj->getProperty (id), currentObj->getProperty (id)))
+            return false;
+    }
+
+    return true;
+}
+
+bool MainContentComponent::shouldPromptSaveOnClose() const
+{
+    if (! lastConfigFile_.existsAsFile())
+        return true;
+
+    return ! isCurrentConfigEqualToSavedFile();
+}
+
+void MainContentComponent::prepareStartupStateBeforeShow()
+{
+    loadRuntimePrefs();
+    maybeAutoLoadConfig();
+    updateWindowHeight();
+
+    // After startup state is restored, scan devices async.
+    juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainContentComponent> (this)]
+    {
+        if (safe != nullptr)
+            safe->startAudioDeviceScan();
+    });
+}
+
+void MainContentComponent::saveConfigForExit (std::function<void(bool)> onDone)
+{
+    if (lastConfigFile_.existsAsFile())
+    {
+        const bool ok = saveConfigToFile (lastConfigFile_);
+        if (onDone != nullptr)
+            juce::MessageManager::callAsync ([cb = std::move (onDone), ok] { cb (ok); });
+        return;
+    }
+
+    pendingSaveCallback_ = std::move (onDone);
+    saveConfigAs();
+}
+
+void MainContentComponent::saveConfig()
+{
+    if (lastConfigFile_.existsAsFile())
+        saveConfigToFile (lastConfigFile_);
+    else
+        saveConfigAs();
+}
+
 void MainContentComponent::saveConfigAs()
 {
     saveChooser_ = std::make_unique<juce::FileChooser> (
@@ -1712,12 +2023,23 @@ void MainContentComponent::saveConfigAs()
                                {
                                    if (safe == nullptr)
                                        return;
+
+                                   bool saved = false;
                                    auto file = chooser.getResult();
-                                   if (file == juce::File{})
-                                       return;
-                                   if (! file.hasFileExtension (".ebrp"))
-                                       file = file.withFileExtension (".ebrp");
-                                   safe->saveConfigToFile (file);
+                                   if (file != juce::File{})
+                                   {
+                                       if (! file.hasFileExtension (".ebrp"))
+                                           file = file.withFileExtension (".ebrp");
+                                       saved = safe->saveConfigToFile (file);
+                                   }
+
+                                   if (safe->pendingSaveCallback_ != nullptr)
+                                   {
+                                       auto cb = std::move (safe->pendingSaveCallback_);
+                                       safe->pendingSaveCallback_ = nullptr;
+                                       cb (saved);
+                                   }
+
                                    safe->saveChooser_.reset();
                                });
 }
@@ -1741,50 +2063,22 @@ void MainContentComponent::loadConfigFrom()
                                });
 }
 
-void MainContentComponent::saveConfigToFile (const juce::File& cfgFile)
+bool MainContentComponent::saveConfigToFile (const juce::File& cfgFile)
 {
-    juce::DynamicObject::Ptr obj = new juce::DynamicObject();
-    obj->setProperty ("source", sourceCombo_.getSelectedId());
-    obj->setProperty ("source_expanded", sourceExpanded_);
-    obj->setProperty ("out_ltc_expanded", outLtcExpanded_);
-    obj->setProperty ("out_mtc_expanded", outMtcExpanded_);
-    obj->setProperty ("out_artnet_expanded", outArtExpanded_);
-    obj->setProperty ("close_to_tray", closeToTray_);
-    obj->setProperty ("ltc_in_driver", ltcInDriverCombo_.getText());
-    obj->setProperty ("ltc_out_driver", ltcOutDriverCombo_.getText());
-    obj->setProperty ("ltc_in_device", ltcInDeviceCombo_.getText());
-    obj->setProperty ("ltc_out_device", ltcOutDeviceCombo_.getText());
-    obj->setProperty ("mtc_in", mtcInCombo_.getText());
-    obj->setProperty ("mtc_out", mtcOutCombo_.getText());
-    obj->setProperty ("artnet_in", artnetInCombo_.getText());
-    obj->setProperty ("artnet_out", artnetOutCombo_.getText());
-    obj->setProperty ("artnet_listen_ip", artnetListenIpEditor_.getText());
-    obj->setProperty ("osc_adapter", oscAdapterCombo_.getText());
-    obj->setProperty ("osc_ip", oscIpEditor_.getText());
-    obj->setProperty ("osc_port", oscPortEditor_.getText());
-    obj->setProperty ("osc_fps", oscFpsCombo_.getText());
-    obj->setProperty ("osc_str", oscAddrStrEditor_.getText());
-    obj->setProperty ("osc_float", oscAddrFloatEditor_.getText());
-    obj->setProperty ("osc_float_type", oscFloatTypeCombo_.getSelectedId());
-    obj->setProperty ("osc_float_max", oscFloatMaxEditor_.getText());
-    juce::Array<juce::var> artnetTargetsVar;
-    const auto artnetTargets = collectArtnetTargets();
-    for (const auto& ip : artnetTargets)
-        artnetTargetsVar.add (ip);
-    obj->setProperty ("artnet_targets", juce::var (artnetTargetsVar));
-    obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0]);
-    obj->setProperty ("ltc_offset", ltcOffsetEditor_.getText());
-    obj->setProperty ("mtc_offset", mtcOffsetEditor_.getText());
-    obj->setProperty ("artnet_offset", artnetOffsetEditor_.getText());
-
-    if (cfgFile.replaceWithText (juce::JSON::toString (juce::var (obj.get()), true)))
+    const auto state = buildConfigState();
+    if (cfgFile.replaceWithText (juce::JSON::toString (state, true)))
     {
         lastConfigFile_ = cfgFile;
+        autoLoadOnStartup_ = true;
+        lastSavedConfigState_ = juce::JSON::toString (state, true);
+        configDirty_ = false;
         saveRuntimePrefs();
         setStatusText ("STOPPED - config saved: " + cfgFile.getFileName(), juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+        return true;
     }
-    else
-        setStatusText ("STOPPED - failed to save config", juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+
+    setStatusText ("STOPPED - failed to save config", juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+    return false;
 }
 
 void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
@@ -1823,6 +2117,8 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
         }
     };
 
+    juce::ScopedValueSetter<bool> holdDirtyTracking (suppressConfigDirtyTracking_, true);
+
     sourceCombo_.setSelectedId ((int) propOr ("source", sourceCombo_.getSelectedId()), juce::dontSendNotification);
     sourceExpanded_ = (bool) propOr ("source_expanded", sourceExpanded_);
     outLtcExpanded_ = (bool) propOr ("out_ltc_expanded", outLtcExpanded_);
@@ -1834,11 +2130,21 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     setComboText (ltcOutDriverCombo_, propOr ("ltc_out_driver", ltcOutDriverCombo_.getText()).toString());
     refreshLtcDeviceListsByDriver();
     setComboText (ltcInDeviceCombo_, propOr ("ltc_in_device", ltcInDeviceCombo_.getText()).toString());
+    setComboText (ltcInChannelCombo_, propOr ("ltc_in_channel", ltcInChannelCombo_.getText()).toString());
+    setComboText (ltcInSampleRateCombo_, propOr ("ltc_in_rate", ltcInSampleRateCombo_.getText()).toString());
+    ltcInGainSlider_.setValue ((double) propOr ("ltc_in_gain_db", ltcInGainSlider_.getValue()), juce::dontSendNotification);
     setComboText (ltcOutDeviceCombo_, propOr ("ltc_out_device", ltcOutDeviceCombo_.getText()).toString());
+    setComboText (ltcOutChannelCombo_, propOr ("ltc_out_channel", ltcOutChannelCombo_.getText()).toString());
+    setComboText (ltcOutSampleRateCombo_, propOr ("ltc_out_rate", ltcOutSampleRateCombo_.getText()).toString());
+    ltcOutLevelSlider_.setValue ((double) propOr ("ltc_out_gain_db", ltcOutLevelSlider_.getValue()), juce::dontSendNotification);
+    ltcOutSwitch_.setState ((bool) propOr ("ltc_out_enabled", ltcOutSwitch_.getState()));
+    ltcThruDot_.setState ((bool) propOr ("ltc_thru_enabled", ltcThruDot_.getState()));
     setComboText (mtcInCombo_, propOr ("mtc_in", mtcInCombo_.getText()).toString());
     setComboText (mtcOutCombo_, propOr ("mtc_out", mtcOutCombo_.getText()).toString());
+    mtcOutSwitch_.setState ((bool) propOr ("mtc_out_enabled", mtcOutSwitch_.getState()));
     setComboText (artnetInCombo_, propOr ("artnet_in", artnetInCombo_.getText()).toString());
     setComboText (artnetOutCombo_, propOr ("artnet_out", artnetOutCombo_.getText()).toString());
+    artnetOutSwitch_.setState ((bool) propOr ("artnet_out_enabled", artnetOutSwitch_.getState()));
     setComboText (oscAdapterCombo_, propOr ("osc_adapter", oscAdapterCombo_.getText()).toString());
     setComboText (oscFpsCombo_, propOr ("osc_fps", oscFpsCombo_.getText()).toString());
 
@@ -1889,6 +2195,8 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
         }
     });
     lastConfigFile_ = cfgFile;
+    lastSavedConfigState_ = juce::JSON::toString (buildConfigState(), true);
+    configDirty_ = false;
     saveRuntimePrefs();
     setStatusText ("STOPPED - config loaded: " + cfgFile.getFileName(), juce::Colour::fromRGB (0xec, 0x48, 0x3c));
 }
@@ -1980,19 +2288,24 @@ void MainContentComponent::resetToDefaults()
     onOutputSettingsChanged();
     updateWindowHeight();
     resized();
+    refreshConfigDirtyState();
     setStatusText ("Config reset", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
 }
 
 void MainContentComponent::openSettingsMenu()
 {
     juce::PopupMenu m;
-    m.addItem (1, "Save config...");
-    m.addItem (2, "Load config...");
-    m.addItem (3, "Reset config");
-    m.addItem (6, "Rescan audio devices");
+    m.addItem (1, "Save");
+    m.addItem (2, "Save As...");
     m.addSeparator();
-    m.addItem (5, "Load on startup", true, autoLoadOnStartup_);
-    m.addItem (4, "Close to tray", true, closeToTray_);
+    m.addItem (3, "Load...");
+    m.addItem (4, "Load on startup", true, autoLoadOnStartup_);
+    m.addSeparator();
+    m.addItem (5, "Reset config");
+    m.addSeparator();
+    m.addItem (6, "Rescan audio");
+    m.addSeparator();
+    m.addItem (7, "Close to tray", true, closeToTray_);
 
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&settingsButton_),
                      [safe = juce::Component::SafePointer<MainContentComponent> (this)] (int result)
@@ -2002,25 +2315,26 @@ void MainContentComponent::openSettingsMenu()
 
                          switch (result)
                          {
-                             case 1: safe->saveConfigAs(); break;
-                             case 2: safe->loadConfigFrom(); break;
-                             case 3: safe->resetToDefaults(); break;
+                             case 1: safe->saveConfig(); break;
+                             case 2: safe->saveConfigAs(); break;
+                             case 3: safe->loadConfigFrom(); break;
+                             case 4:
+                                 safe->autoLoadOnStartup_ = ! safe->autoLoadOnStartup_;
+                                 safe->saveRuntimePrefs();
+                                 safe->setStatusText (safe->autoLoadOnStartup_ ? "STOPPED - load on startup ON"
+                                                                                : "STOPPED - load on startup OFF",
+                                                      juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+                                 break;
+                             case 5: safe->resetToDefaults(); break;
                              case 6:
                                  safe->refreshDeviceLists();
                                  safe->setStatusText ("STOPPED - audio devices rescanned",
                                                       juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
-                             case 4:
+                             case 7:
                                  safe->closeToTray_ = ! safe->closeToTray_;
                                  safe->saveRuntimePrefs();
                                  safe->setStatusText (safe->closeToTray_ ? "STOPPED - close to tray ON" : "STOPPED - close to tray OFF",
-                                                      juce::Colour::fromRGB (0xec, 0x48, 0x3c));
-                                 break;
-                             case 5:
-                                 safe->autoLoadOnStartup_ = ! safe->autoLoadOnStartup_;
-                                 safe->saveRuntimePrefs();
-                                 safe->setStatusText (safe->autoLoadOnStartup_ ? "STOPPED - load on startup ON"
-                                                                                : "STOPPED - load on startup OFF",
                                                       juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
                              default: break;
@@ -2055,6 +2369,8 @@ MainWindow::MainWindow()
     // Min = all-collapsed height; no upper cap so the user can drag to screen edge.
     setResizeLimits (430, 420, 430, 8192);
     setContentOwned (new MainContentComponent(), true);
+    if (auto* content = dynamic_cast<MainContentComponent*> (getContentComponent()))
+        content->prepareStartupStateBeforeShow();
     // After setContentOwned the window is already sized to the content's preferred
     // height (set via setSize() in MainContentComponent::MainContentComponent()).
     // Just centre on screen without forcing the height back to a hardcoded value.
@@ -2081,17 +2397,11 @@ MainWindow::~MainWindow() = default;
 
 void MainWindow::closeButtonPressed()
 {
-    if (quittingFromMenu_)
-    {
-        juce::JUCEApplication::getInstance()->systemRequestedQuit();
-        return;
-    }
-
     bool closeToTray = true;
     if (auto* content = dynamic_cast<MainContentComponent*> (getContentComponent()))
         closeToTray = content->closeToTrayEnabled();
 
-    if (closeToTray)
+    if (closeToTray && ! quittingFromMenu_)
     {
         setVisible (false);
         if (trayIcon_ != nullptr)
@@ -2099,7 +2409,65 @@ void MainWindow::closeButtonPressed()
         return;
     }
 
-    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    requestQuitWithSavePrompt();
+}
+
+void MainWindow::requestQuitWithSavePrompt()
+{
+    auto* content = dynamic_cast<MainContentComponent*> (getContentComponent());
+    if (content == nullptr)
+    {
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        return;
+    }
+
+    if (! content->shouldPromptSaveOnClose())
+    {
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        return;
+    }
+
+    if (closePromptOpen_)
+        return;
+
+    closePromptOpen_ = true;
+    ExitSavePromptDialog::show (this, [safe = juce::Component::SafePointer<MainWindow> (this)] (int action)
+    {
+        if (auto* self = safe.getComponent())
+            self->handleClosePromptResult (action);
+    });
+}
+
+void MainWindow::handleClosePromptResult (int action)
+{
+    closePromptOpen_ = false;
+
+    if (action == 1)
+    {
+        if (auto* content = dynamic_cast<MainContentComponent*> (getContentComponent()))
+        {
+            content->saveConfigForExit ([safe = juce::Component::SafePointer<MainWindow> (this)] (bool saved)
+            {
+                if (saved)
+                {
+                    if (safe != nullptr)
+                        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                }
+                else if (auto* self = safe.getComponent())
+                {
+                    self->quittingFromMenu_ = false;
+                }
+            });
+            return;
+        }
+    }
+    else if (action == 2)
+    {
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        return;
+    }
+
+    quittingFromMenu_ = false;
 }
 
 void MainWindow::createTrayIcon()
@@ -2118,6 +2486,6 @@ void MainWindow::showFromTray()
 void MainWindow::quitFromTray()
 {
     quittingFromMenu_ = true;
-    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    closeButtonPressed();
 }
 } // namespace bridge

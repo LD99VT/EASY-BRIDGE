@@ -26,7 +26,7 @@ Pre-built installers are attached to each [GitHub Release](../../releases/latest
 
 | Platform | Asset |
 |----------|-------|
-| Windows  | `EasyBridge-win64.zip` — standalone `.exe` |
+| Windows  | `EasyBridge_Setup_<version>.exe` — installer |
 | macOS    | `EasyBridge-<version>.dmg` — universal binary (Intel + Apple Silicon) |
 
 ---
