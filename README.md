@@ -3,6 +3,7 @@
 **Easy Bridge** is a cross-platform desktop application for converting and routing timecode between different formats used in live production, broadcast, and post-production workflows.
 
 Receive timecode in one format — send it out in another, simultaneously, with minimal latency.
+
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![Linux](https://img.shields.io/badge/platform-Linux-yellow)
