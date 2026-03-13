@@ -186,6 +186,7 @@
       <li><a href="#mtc-in"><span lang="en">Input MTC</span><span lang="ua">Вхід MTC</span></a></li>
       <li><a href="#artnet-in"><span lang="en">Input ArtNet</span><span lang="ua">Вхід ArtNet</span></a></li>
       <li><a href="#osc-in"><span lang="en">Input OSC</span><span lang="ua">Вхід OSC</span></a></li>
+      <li><a href="#system-time"><span lang="en">Input System Time</span><span lang="ua">Вхід System Time</span></a></li>
       <li><a href="#ltc-out"><span lang="en">Output LTC</span><span lang="ua">Вихід LTC</span></a></li>
       <li><a href="#mtc-out"><span lang="en">Output MTC</span><span lang="ua">Вихід MTC</span></a></li>
       <li><a href="#artnet-out"><span lang="en">Output ArtNet</span><span lang="ua">Вихід ArtNet</span></a></li>
@@ -208,13 +209,13 @@
         <span lang="ua">Міст протоколів тайм-коду – Посібник користувача</span>
       </div>
       <div class="desc" lang="en">
-        Easy Bridge receives a timecode signal from one source (LTC audio, MTC MIDI, Art-Net, or OSC)
+        Easy Bridge receives a timecode signal from one source (LTC audio, MTC MIDI, Art-Net, OSC, or System Time)
         and simultaneously re-transmits it as up to three outputs: <b>LTC audio</b>, <b>MTC MIDI</b>,
         and <b>Art-Net timecode</b>. Each output can be independently enabled, offset, and configured.
         The app runs as a background process and can minimise to the system tray.
       </div>
       <div class="desc" lang="ua">
-        Easy Bridge отримує сигнал тайм-коду з одного джерела (LTC аудіо, MTC MIDI, Art-Net або OSC)
+        Easy Bridge отримує сигнал тайм-коду з одного джерела (LTC аудіо, MTC MIDI, Art-Net, OSC або System Time)
         та одночасно ретранслює його до трьох виходів: <b>LTC аудіо</b>, <b>MTC MIDI</b>
         та <b>Art-Net тайм-код</b>. Кожен вихід можна незалежно вмикати, зміщувати та налаштовувати.
         Застосунок працює у фоновому режимі та може згортатися до системного трею.
@@ -239,7 +240,7 @@
     <table class="fields">
       <tr><th><span lang="en">Element</span><span lang="ua">Елемент</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
       <tr><td><span lang="en">Clock display</span><span lang="ua">Дисплей годинника</span></td><td><span lang="en">Shows the current timecode position. Stays at <code>00:00:00:00</code> when no valid signal is detected. The font is monospaced for stable digit width.</span><span lang="ua">Показує поточну позицію тайм-коду. Залишається на <code>00:00:00:00</code>, коли валідний сигнал не виявлено. Шрифт моноширинний для стабільної ширини цифр.</span></td></tr>
-      <tr><td>TC FPS <span lang="en">label</span><span lang="ua">мітка</span></td><td><span lang="en">Displayed below the clock. Shows the detected or configured frame rate (e.g. <code>TC FPS: 25</code>). Updates as the frame rate is identified from the incoming stream.</span><span lang="ua">Відображається під годинником. Показує виявлену або налаштовану частоту кадрів (наприклад, <code>TC FPS: 25</code>). Оновлюється по мірі ідентифікації частоти кадрів з вхідного потоку.</span></td></tr>
+      <tr><td><span lang="en">FPS strip</span><span lang="ua">FPS-рядок</span></td><td><span lang="en">Displayed below the clock as 5 compact buttons: <code>23.976</code>, <code>24</code>, <code>25</code>, <code>29.97</code>, and <code>30</code>. The active incoming frame rate is highlighted automatically.</span><span lang="ua">Відображається під годинником як 5 компактних кнопок: <code>23.976</code>, <code>24</code>, <code>25</code>, <code>29.97</code> і <code>30</code>. Активна вхідна частота кадрів підсвічується автоматично.</span></td></tr>
     </table>
 
     <!-- ── INPUT SOURCE ───────────────────────────────────────────────── -->
@@ -248,7 +249,7 @@
     <p lang="ua">Розгортувана секція для вибору протоколу тайм-коду як активного входу. Стрілка розгортання/згортання ліворуч перемикає видимість усіх рядків входу для економії місця на екрані.</p>
     <table class="fields">
       <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
-      <tr><td><span lang="en">Source selector</span><span lang="ua">Вибір джерела</span></td><td><span lang="en">Dropdown to choose the active input protocol: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, or <b>OSC</b>. Only the rows relevant to the selected source are used; the others are ignored.</span><span lang="ua">Розкривний список для вибору активного протоколу входу: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b> або <b>OSC</b>. Використовуються лише рядки відповідного джерела; інші ігноруються.</span></td></tr>
+      <tr><td><span lang="en">Source selector</span><span lang="ua">Вибір джерела</span></td><td><span lang="en">Dropdown to choose the active input protocol: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, <b>OSC</b>, or <b>System Time</b>. Only the rows relevant to the selected source are used; the others are ignored.</span><span lang="ua">Розкривний список для вибору активного протоколу входу: <b>LTC</b>, <b>MTC</b>, <b>ArtNet</b>, <b>OSC</b> або <b>System Time</b>. Використовуються лише рядки відповідного джерела; інші ігноруються.</span></td></tr>
     </table>
     <p lang="en">Switching the source immediately stops the previous listener and starts the new one. All output streams continue without interruption.</p>
     <p lang="ua">Перемикання джерела негайно зупиняє попередній слухач і запускає новий. Усі вихідні потоки продовжують роботу без перерви.</p>
@@ -312,6 +313,15 @@
       </td></tr>
       <tr><td><span lang="en">Float max (s)</span><span lang="ua">Float max (с)</span></td><td><span lang="en">Visible only when <b>Float type</b> is <b>Normalized</b>. Enter the clip duration in seconds — e.g. <code>8</code> for an 8-second clip. Resolume's clip position (0.0–1.0) will be scaled by this value to produce the correct timecode.</span><span lang="ua">Відображається лише коли <b>Float type</b> — <b>Normalized</b>. Введіть тривалість кліпу в секундах — наприклад, <code>8</code> для 8-секундного кліпу. Позиція кліпу Resolume (0.0–1.0) буде помножена на це значення для отримання правильного тайм-коду.</span></td></tr>
     </table>
+    
+    <!-- ── INPUT SYSTEM TIME ─────────────────────────────────────────── -->
+    <h2 id="system-time"><span lang="en">Input System Time</span><span lang="ua">Вхід System Time</span></h2>
+    <p lang="en">Available when <b>System Time</b> is selected as the source. Generates input timecode directly from the local computer clock.</p>
+    <p lang="ua">Доступно, коли <b>System Time</b> вибрано як джерело. Генерує вхідний тайм-код безпосередньо з локального системного часу комп'ютера.</p>
+    <table class="fields">
+      <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
+      <tr><td>System FPS</td><td><span lang="en">Frame rate used to convert the current wall-clock time into <code>HH:MM:SS:FF</code>. Options: <b>23.976, 24, 25, 29.97, 30</b>.</span><span lang="ua">Частота кадрів, що використовується для перетворення поточного системного часу у <code>HH:MM:SS:FF</code>. Опції: <b>23.976, 24, 25, 29.97, 30</b>.</span></td></tr>
+    </table>
 
     <!-- ── OUTPUT LTC ─────────────────────────────────────────────────── -->
     <h2 id="ltc-out"><span lang="en">Output LTC</span><span lang="ua">Вихід LTC</span></h2>
@@ -325,6 +335,7 @@
       <tr><td><span lang="en">Device (Output)</span><span lang="ua">Пристрій (вихід)</span></td><td><span lang="en">The audio output device to carry the LTC signal. Choose the device that connects to your downstream system.</span><span lang="ua">Аудіовихідний пристрій для передачі сигналу LTC. Виберіть пристрій, підключений до вашої системи.</span></td></tr>
       <tr><td><span lang="en">Channel</span><span lang="ua">Канал</span></td><td><span lang="en">Output channel to write the LTC signal to. Options: 1–8 and <code>1+2</code> (duplicated to both channels). Use <code>1+2</code> if your downstream device requires a stereo feed.</span><span lang="ua">Вихідний канал для запису сигналу LTC. Опції: 1–8 та <code>1+2</code> (дублюється на обидва канали). Використовуйте <code>1+2</code>, якщо ваш пристрій вимагає стерео-подачу.</span></td></tr>
       <tr><td><span lang="en">Sample Rate</span><span lang="ua">Частота дискретизації</span></td><td><span lang="en">Output sample rate. Must match the device's configured rate. Mismatched rates cause pitch-shifted or garbled LTC.</span><span lang="ua">Частота дискретизації виходу. Повинна відповідати налаштованій частоті пристрою. Невідповідність частот спричиняє зсунутий або спотворений LTC.</span></td></tr>
+      <tr><td>Convert FPS</td><td><span lang="en">Optional per-output frame-rate conversion. Available rates: <b>23.976, 24, 25, 29.97, 30</b>. When no button is selected, LTC follows the incoming FPS.</span><span lang="ua">Необов'язкове перетворення частоти кадрів для цього виходу. Доступні значення: <b>23.976, 24, 25, 29.97, 30</b>. Якщо жодну кнопку не вибрано, LTC наслідує вхідний FPS.</span></td></tr>
       <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Integer frame offset applied to the output timecode, range <code>−30</code> to <code>+30</code> frames. Not applied in Thru mode (the raw audio is not time-shifted). Use it in normal mode to compensate for downstream decoding latency.</span><span lang="ua">Цілочисельне зміщення кадрів вихідного тайм-коду, діапазон від <code>−30</code> до <code>+30</code> кадрів. Не застосовується в режимі Thru. Використовуйте в нормальному режимі для компенсації затримки декодування.</span></td></tr>
       <tr><td><span lang="en">Level</span><span lang="ua">Рівень</span></td><td><span lang="en">Output level in dB, range <code>−24 dB</code> to <code>+24 dB</code>. Sets the amplitude of the generated LTC audio signal. Double-click to reset to 0 dB. Adjust to match your device's expected input level.</span><span lang="ua">Рівень виходу в дБ, діапазон від <code>−24 дБ</code> до <code>+24 дБ</code>. Встановлює амплітуду згенерованого LTC-аудіосигналу. Двічі клацніть для скидання до 0 дБ. Регулюйте відповідно до очікуваного вхідного рівня пристрою.</span></td></tr>
     </table>
@@ -337,6 +348,7 @@
       <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
       <tr><td><span lang="en">Out MTC toggle</span><span lang="ua">Перемикач Out MTC</span></td><td><span lang="en">Enable or disable MTC output. When disabled, no MIDI messages are sent.</span><span lang="ua">Вмикає або вимикає вихід MTC. Коли вимкнено, MIDI-повідомлення не надсилаються.</span></td></tr>
       <tr><td><span lang="en">MIDI Output</span><span lang="ua">MIDI-вихід</span></td><td><span lang="en">Destination MIDI port for MTC messages. Select the port connected to the target device (hardware or virtual).</span><span lang="ua">Цільовий MIDI-порт для MTC-повідомлень. Виберіть порт, підключений до цільового пристрою (апаратного або віртуального).</span></td></tr>
+      <tr><td>Convert FPS</td><td><span lang="en">Optional per-output frame-rate conversion for MTC. Available rates: <b>24, 25, 29.97, 30</b>. When not selected, MTC follows the incoming FPS.</span><span lang="ua">Необов'язкове перетворення частоти кадрів для MTC-виходу. Доступні значення: <b>24, 25, 29.97, 30</b>. Якщо не вибрано, MTC наслідує вхідний FPS.</span></td></tr>
       <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Frame offset applied to MTC output, range <code>−30</code> to <code>+30</code> frames. Compensates for MIDI routing latency.</span><span lang="ua">Зміщення кадрів для виходу MTC, діапазон від <code>−30</code> до <code>+30</code> кадрів. Компенсує затримку маршрутизації MIDI.</span></td></tr>
     </table>
     <div class="note" lang="en"><b>MTC loop guard:</b> If the selected MTC Output port is the same as the MTC Input port (and MTC is the active source), the app will automatically switch the Output to the next available MIDI port. If no other port is available, MTC Output is disabled and a warning dialog is shown. This prevents MIDI feedback loops.</div>
@@ -349,9 +361,9 @@
     <table class="fields">
       <tr><th><span lang="en">Field</span><span lang="ua">Поле</span></th><th><span lang="en">Description</span><span lang="ua">Опис</span></th></tr>
       <tr><td><span lang="en">Out ArtNet toggle</span><span lang="ua">Перемикач Out ArtNet</span></td><td><span lang="en">Enable or disable Art-Net output.</span><span lang="ua">Вмикає або вимикає вихід Art-Net.</span></td></tr>
-      <tr><td><span lang="en">Interface</span><span lang="ua">Інтерфейс</span></td><td><span lang="en">Local network interface used for outgoing Art-Net packets. Choose the adapter on the same subnet as the destination devices.</span><span lang="ua">Локальний мережевий інтерфейс для вихідних пакетів Art-Net. Виберіть адаптер у тій самій підмережі, що й цільові пристрої.</span></td></tr>
-      <tr><td>Dest IP 1</td><td><span lang="en">Primary destination IP address. Use a broadcast address (e.g. <code>2.255.255.255</code> for Art-Net universe 0) or a specific unicast IP.</span><span lang="ua">Основна IP-адреса призначення. Використовуйте широкомовну адресу (наприклад, <code>2.255.255.255</code> для всесвіту Art-Net 0) або конкретну одноадресну IP.</span></td></tr>
-      <tr><td>Dest IP 2–5</td><td><span lang="en">Additional destination IPs. Click the <code>+</code> button to add extra addresses (up to 4 extra). Click <code>−</code> to remove them. Each address receives the same Art-Net Timecode packet.</span><span lang="ua">Додаткові IP-адреси призначення. Натисніть кнопку <code>+</code>, щоб додати адреси (до 4 додаткових). Натисніть <code>−</code>, щоб видалити їх. Кожна адреса отримує однаковий пакет Art-Net Timecode.</span></td></tr>
+      <tr><td>Send 1–5</td><td><span lang="en">Destination rows for Art-Net Timecode. Each row contains a target IP and its own collapsible adapter selector. Use <code>+</code> to add rows up to 5 total, and <code>−</code> to remove extra rows. New rows default to <code>255.255.255.255</code>.</span><span lang="ua">Рядки призначення для Art-Net Timecode. Кожен рядок містить цільовий IP та власний згортуваний вибір адаптера. Використовуйте <code>+</code>, щоб додати рядки до 5 загалом, і <code>−</code>, щоб видалити зайві. Нові рядки за замовчуванням мають <code>255.255.255.255</code>.</span></td></tr>
+      <tr><td><span lang="en">Adapter</span><span lang="ua">Адаптер</span></td><td><span lang="en">Per-target local adapter used for routing outgoing Art-Net packets. Expand a Send row to choose the adapter for that destination. <b>ALL INTERFACES (0.0.0.0)</b> leaves routing to the operating system.</span><span lang="ua">Локальний адаптер для маршрутизації вихідних пакетів Art-Net для кожної цілі окремо. Розгорніть рядок Send, щоб вибрати адаптер для конкретної адреси. <b>ALL INTERFACES (0.0.0.0)</b> залишає маршрутизацію на операційну систему.</span></td></tr>
+      <tr><td>Convert FPS</td><td><span lang="en">Optional per-output frame-rate conversion for Art-Net TC. Available rates: <b>24, 25, 29.97, 30</b>. When not selected, Art-Net follows the incoming FPS.</span><span lang="ua">Необов'язкове перетворення частоти кадрів для виходу Art-Net TC. Доступні значення: <b>24, 25, 29.97, 30</b>. Якщо не вибрано, Art-Net наслідує вхідний FPS.</span></td></tr>
       <tr><td><span lang="en">Offset</span><span lang="ua">Зміщення</span></td><td><span lang="en">Frame offset applied to Art-Net output, range <code>−30</code> to <code>+30</code> frames.</span><span lang="ua">Зміщення кадрів для виходу Art-Net, діапазон від <code>−30</code> до <code>+30</code> кадрів.</span></td></tr>
     </table>
 

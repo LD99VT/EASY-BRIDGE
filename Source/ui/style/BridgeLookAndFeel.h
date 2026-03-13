@@ -23,6 +23,21 @@ public:
         juce::ignoreUnused (backgroundColour);
         auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
         auto c = button.findColour (juce::TextButton::buttonColourId);
+        const auto text = button.getButtonText().trim();
+        const bool isPlusMinus = (text == "+" || text == "-");
+        if (isPlusMinus)
+        {
+            c = kInput;
+            if (isMouseOverButton || isButtonDown)
+                c = isButtonDown ? kTeal.darker (0.15f) : kTeal;
+
+            g.setColour (c);
+            g.fillRoundedRectangle (bounds, 5.0f);
+            g.setColour (juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+            g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
+            return;
+        }
+
         if (isButtonDown)
             c = c.darker (0.15f);
         else if (isMouseOverButton)
@@ -32,6 +47,30 @@ public:
         g.fillRoundedRectangle (bounds, 5.0f);
         g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
         g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
+    }
+
+    void drawButtonText (juce::Graphics& g,
+                         juce::TextButton& button,
+                         bool isMouseOverButton,
+                         bool isButtonDown) override
+    {
+        const auto text = button.getButtonText().trim();
+        const bool isPlusMinus = (text == "+" || text == "-");
+        if (! isPlusMinus)
+        {
+            juce::LookAndFeel_V4::drawButtonText (g, button, isMouseOverButton, isButtonDown);
+            return;
+        }
+
+        const auto iconColour = (isMouseOverButton || isButtonDown) ? kBg : juce::Colour::fromRGB (0x90, 0x90, 0x90);
+        const auto b = button.getLocalBounds().toFloat();
+        const float cx = b.getCentreX();
+        const float cy = b.getCentreY();
+
+        g.setColour (iconColour);
+        g.fillRect (juce::Rectangle<float> (cx - 5.5f, cy - 1.0f, 11.0f, 2.0f));
+        if (text == "+")
+            g.fillRect (juce::Rectangle<float> (cx - 1.0f, cy - 5.5f, 2.0f, 11.0f));
     }
 
     void drawComboBox (juce::Graphics& g,

@@ -118,7 +118,7 @@ private:
     static int offsetFromEditor (const juce::TextEditor& editor);
     void syncOscIpWithAdapter();
     void updateArtnetIpControls();
-    juce::StringArray collectArtnetTargets() const;
+    juce::Array<engine::ArtnetTarget> collectArtnetTargets() const;
     void setStatusText (const juce::String& text, juce::Colour colour);
     void setStatusSegments (juce::Array<StatusSegment> segments);
     void openStatusMonitorWindow();
@@ -226,9 +226,8 @@ private:
     juce::Label mtcOutLbl_     { {}, "MIDI Output:" };
     juce::Label mtcConvertLbl_ { {}, "Convert FPS:" };
     juce::Label mtcOffsetLbl_  { {}, "Offset (frames):" };
-    juce::Label artOutLbl_     { {}, "Interface:" };
-    juce::Label artIpLbl_      { {}, "Destination IP:" };
-    std::array<juce::Label, 4> artIpExtraLbls_;
+    std::array<juce::Label, 5> artSendLbls_;
+    std::array<juce::Label, 5> artAdapterLbls_;
     juce::Label artConvertLbl_ { {}, "Convert FPS:" };
     juce::Label artOffsetLbl_  { {}, "Offset (frames):" };
 
@@ -267,11 +266,13 @@ private:
     juce::TextEditor mtcOffsetEditor_;
     MacSwitch mtcOutSwitch_;
 
-    juce::ComboBox artnetOutCombo_;
+    std::array<ExpandCircleButton, 5> artnetTargetExpandButtons_;
+    std::array<juce::ComboBox, 5> artnetTargetAdapterCombos_;
     std::array<juce::TextEditor, 5> artnetDestIpEditors_;
     std::array<juce::TextButton, 4> artnetDestRemoveButtons_;
-    juce::TextButton artnetAddIpButton_ { "+ Add IP" };
+    juce::TextButton artnetAddIpButton_ { "+" };
     int artnetDestVisibleCount_ { 1 };
+    std::array<bool, 5> artnetTargetAdapterExpanded_ { true, false, false, false, false };
     FpsConvertStrip artnetConvertStrip_ { { FrameRate::FPS_24, FrameRate::FPS_25, FrameRate::FPS_2997, FrameRate::FPS_30 } };
     juce::TextEditor artnetOffsetEditor_;
     MacSwitch artnetOutSwitch_;

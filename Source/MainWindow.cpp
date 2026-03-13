@@ -677,10 +677,12 @@ MainContentComponent::MainContentComponent()
     loadFontsAndIcon();
     applyLookAndFeel();
 
-    for (int i = 0; i < (int) artIpExtraLbls_.size(); ++i)
+    for (int i = 0; i < (int) artSendLbls_.size(); ++i)
     {
-        artIpExtraLbls_[(size_t) i].setText ("Dest IP " + juce::String (i + 2) + ":", juce::dontSendNotification);
-        artnetDestRemoveButtons_[(size_t) i].setButtonText ("-");
+        artSendLbls_[(size_t) i].setText ("Send " + juce::String (i + 1) + ":", juce::dontSendNotification);
+        artAdapterLbls_[(size_t) i].setText ("Adapter:", juce::dontSendNotification);
+        if (i < (int) artnetDestRemoveButtons_.size())
+            artnetDestRemoveButtons_[(size_t) i].setButtonText ("-");
     }
 
     titleEasyLabel_.setText ("EASY ", juce::dontSendNotification);
@@ -767,8 +769,9 @@ MainContentComponent::MainContentComponent()
         &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
         &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &systemTimeFpsLbl_, &oscStrLbl_, &oscFloatLbl_, &oscFloatTypeLbl_, &oscFloatMaxLbl_,
         &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outConvertLbl_, &outOffsetLbl_, &outLevelLbl_,
-        &mtcOutLbl_, &mtcConvertLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artConvertLbl_, &artOffsetLbl_,
-        &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
+        &mtcOutLbl_, &mtcConvertLbl_, &mtcOffsetLbl_, &artConvertLbl_, &artOffsetLbl_,
+        &artSendLbls_[0], &artSendLbls_[1], &artSendLbls_[2], &artSendLbls_[3], &artSendLbls_[4],
+        &artAdapterLbls_[0], &artAdapterLbls_[1], &artAdapterLbls_[2], &artAdapterLbls_[3], &artAdapterLbls_[4]
     };
     for (auto* l : rowLabels)
     {
@@ -796,7 +799,8 @@ MainContentComponent::MainContentComponent()
     styleCombo (ltcOutChannelCombo_);
     styleCombo (ltcOutSampleRateCombo_);
     styleCombo (mtcOutCombo_);
-    styleCombo (artnetOutCombo_);
+    for (auto& combo : artnetTargetAdapterCombos_)
+        styleCombo (combo);
     rowsPanel_->addAndMakeVisible (ltcInDriverCombo_);
     rowsPanel_->addAndMakeVisible (ltcOutDriverCombo_);
 
@@ -842,7 +846,6 @@ MainContentComponent::MainContentComponent()
     systemTimeFpsCombo_.addItem ("29.97", 4);
     systemTimeFpsCombo_.addItem ("30", 5);
     systemTimeFpsCombo_.setSelectedId (3, juce::dontSendNotification);
-
     setupDbSlider (ltcInGainSlider_);
     ltcInLevelBar_.setMeterColour (juce::Colour::fromRGB (0x3d, 0x80, 0x70));
     setupDbSlider (ltcOutLevelSlider_);
@@ -889,10 +892,15 @@ MainContentComponent::MainContentComponent()
             &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_,
             &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_,
             &oscAdapterCombo_,
-            &mtcInCombo_, &artnetInCombo_, &mtcOutCombo_, &artnetOutCombo_, &oscFpsCombo_ })
+            &mtcInCombo_, &artnetInCombo_, &mtcOutCombo_, &oscFpsCombo_ })
     {
         rowsPanel_->addAndMakeVisible (*c);
         c->onChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
+    }
+    for (auto& combo : artnetTargetAdapterCombos_)
+    {
+        rowsPanel_->addAndMakeVisible (combo);
+        combo.onChange = [this] { onOutputSettingsChanged(); refreshConfigDirtyState(); };
     }
     artnetListenIpEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
     oscIpEditor_.onTextChange = [this] { onInputSettingsChanged(); refreshConfigDirtyState(); };
@@ -921,10 +929,26 @@ MainContentComponent::MainContentComponent()
     };
     for (auto& e : artnetDestIpEditors_)
         e.onTextChange = [this] { onOutputSettingsChanged(); refreshConfigDirtyState(); };
+    for (int i = 0; i < (int) artnetTargetExpandButtons_.size(); ++i)
+    {
+        artnetTargetExpandButtons_[(size_t) i].setColours (kInput, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a), juce::Colour::fromRGB (0xf2, 0xf2, 0xf2));
+        artnetTargetExpandButtons_[(size_t) i].setExpanded (artnetTargetAdapterExpanded_[(size_t) i]);
+        artnetTargetExpandButtons_[(size_t) i].onClick = [this, i]
+        {
+            if (i >= artnetDestVisibleCount_)
+                return;
+            artnetTargetAdapterExpanded_[(size_t) i] = ! artnetTargetAdapterExpanded_[(size_t) i];
+            artnetTargetExpandButtons_[(size_t) i].setExpanded (artnetTargetAdapterExpanded_[(size_t) i]);
+            updateWindowHeight();
+            resized();
+            refreshConfigDirtyState();
+        };
+        rowsPanel_->addAndMakeVisible (artnetTargetExpandButtons_[(size_t) i]);
+    }
     for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
     {
-        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonColourId, kInput);
+        artnetDestRemoveButtons_[i].setColour (juce::TextButton::buttonOnColourId, kInput);
         artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
         artnetDestRemoveButtons_[i].setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
         artnetDestRemoveButtons_[i].onClick = [this, i]
@@ -933,9 +957,17 @@ MainContentComponent::MainContentComponent()
             if (idx < artnetDestVisibleCount_)
             {
                 artnetDestIpEditors_[idx].setText ("", juce::dontSendNotification);
+                artnetTargetAdapterCombos_[(size_t) idx].setSelectedItemIndex (0, juce::dontSendNotification);
+                artnetTargetAdapterExpanded_[(size_t) idx] = false;
                 for (int j = idx; j < artnetDestVisibleCount_ - 1; ++j)
+                {
                     artnetDestIpEditors_[j].setText (artnetDestIpEditors_[j + 1].getText(), juce::dontSendNotification);
+                    artnetTargetAdapterCombos_[(size_t) j].setText (artnetTargetAdapterCombos_[(size_t) (j + 1)].getText(), juce::dontSendNotification);
+                    artnetTargetAdapterExpanded_[(size_t) j] = artnetTargetAdapterExpanded_[(size_t) (j + 1)];
+                }
                 artnetDestIpEditors_[artnetDestVisibleCount_ - 1].setText ("", juce::dontSendNotification);
+                artnetTargetAdapterCombos_[(size_t) (artnetDestVisibleCount_ - 1)].setSelectedItemIndex (0, juce::dontSendNotification);
+                artnetTargetAdapterExpanded_[(size_t) (artnetDestVisibleCount_ - 1)] = false;
                 --artnetDestVisibleCount_;
                 updateArtnetIpControls();
                 updateWindowHeight();
@@ -946,14 +978,17 @@ MainContentComponent::MainContentComponent()
         };
         rowsPanel_->addAndMakeVisible (artnetDestRemoveButtons_[i]);
     }
-    artnetAddIpButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-    artnetAddIpButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
+    artnetAddIpButton_.setColour (juce::TextButton::buttonColourId, kInput);
+    artnetAddIpButton_.setColour (juce::TextButton::buttonOnColourId, kInput);
     artnetAddIpButton_.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     artnetAddIpButton_.setColour (juce::TextButton::textColourOnId, juce::Colour::fromRGB (0xca, 0xca, 0xca));
     artnetAddIpButton_.onClick = [this]
     {
         if (artnetDestVisibleCount_ < (int) artnetDestIpEditors_.size())
         {
+            artnetDestIpEditors_[(size_t) artnetDestVisibleCount_].setText ("255.255.255.255", juce::dontSendNotification);
+            artnetTargetAdapterExpanded_[(size_t) artnetDestVisibleCount_] = false;
+            artnetTargetAdapterCombos_[(size_t) artnetDestVisibleCount_].setSelectedItemIndex (0, juce::dontSendNotification);
             ++artnetDestVisibleCount_;
             updateArtnetIpControls();
             updateWindowHeight();
@@ -1011,7 +1046,7 @@ MainContentComponent::MainContentComponent()
     mtcOutSwitch_.onToggle = [this] (bool) { onOutputToggleChanged(); };
     artnetOutSwitch_.onToggle = [this] (bool) { onOutputToggleChanged(); };
 
-    for (auto* c : { &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_, &mtcOutCombo_, &artnetOutCombo_ })
+    for (auto* c : { &ltcOutDeviceCombo_, &ltcOutChannelCombo_, &ltcOutSampleRateCombo_, &mtcOutCombo_ })
         c->onChange = [this] { onOutputSettingsChanged(); refreshConfigDirtyState(); };
 
     // MTC loop guard: re-check when MTC In device changes while source is MTC.
@@ -1027,7 +1062,6 @@ MainContentComponent::MainContentComponent()
         onInputSettingsChanged();
         refreshConfigDirtyState();
     };
-
     rowsPanel_->addAndMakeVisible (ltcInGainSlider_);
     rowsPanel_->addAndMakeVisible (ltcInLevelBar_);
     rowsPanel_->addAndMakeVisible (ltcOutLevelSlider_);
@@ -1122,7 +1156,13 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
     addRows (1); // out MTC header
     if (outMtcExpanded) addRows (3);
     addRows (1); // out ArtNet header
-    if (outArtExpanded) addRows (1 + artnetDestVisibleCount_ + 2);
+    if (outArtExpanded)
+    {
+        int artRows = 2; // convert + offset
+        for (int i = 0; i < artnetDestVisibleCount_; ++i)
+            artRows += 1 + (artnetTargetAdapterExpanded_[(size_t) i] ? 1 : 0);
+        addRows (artRows);
+    }
 
     h += 4; // gap before status
     h += kCompactBarHeight; // status
@@ -1346,8 +1386,9 @@ void MainContentComponent::resized()
             &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
             &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &systemTimeFpsLbl_, &oscStrLbl_, &oscFloatLbl_, &oscFloatTypeLbl_, &oscFloatMaxLbl_,
             &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outConvertLbl_, &outOffsetLbl_, &outLevelLbl_,
-            &mtcOutLbl_, &mtcConvertLbl_, &mtcOffsetLbl_, &artOutLbl_, &artIpLbl_, &artConvertLbl_, &artOffsetLbl_,
-            &artIpExtraLbls_[0], &artIpExtraLbls_[1], &artIpExtraLbls_[2], &artIpExtraLbls_[3]
+            &mtcOutLbl_, &mtcConvertLbl_, &mtcOffsetLbl_, &artConvertLbl_, &artOffsetLbl_,
+            &artSendLbls_[0], &artSendLbls_[1], &artSendLbls_[2], &artSendLbls_[3], &artSendLbls_[4],
+            &artAdapterLbls_[0], &artAdapterLbls_[1], &artAdapterLbls_[2], &artAdapterLbls_[3], &artAdapterLbls_[4]
         };
         for (auto* l : labels)
             l->setVisible (false);
@@ -1485,30 +1526,43 @@ void MainContentComponent::resized()
     outArtExpandBtn_.setExpanded (outArtExpanded_);
     if (outArtExpanded_)
     {
-        fieldRow (artOutLbl_, artnetOutCombo_);
-        auto destRow = row();
-        rowsPanel_->paramRowRects.add (destRow);
-        auto labelArea = destRow.removeFromLeft (112);
-        artIpLbl_.setVisible (true);
-        artIpLbl_.setBounds (labelArea.reduced (10, 0));
-        auto controlArea = destRow.reduced (2, 3);
-        auto addArea = controlArea.removeFromRight (98);
-        artnetDestIpEditors_[0].setBounds (controlArea.reduced (0, 0));
-        artnetAddIpButton_.setBounds (addArea.reduced (2, 0));
-        artnetAddIpButton_.setVisible (true);
-
-        for (int i = 1; i < artnetDestVisibleCount_; ++i)
+        for (int i = 0; i < artnetDestVisibleCount_; ++i)
         {
-            auto extraRow = row();
-            rowsPanel_->paramRowRects.add (extraRow);
-            auto extraLabelArea = extraRow.removeFromLeft (112);
-            artIpExtraLbls_[(size_t) (i - 1)].setVisible (true);
-            artIpExtraLbls_[(size_t) (i - 1)].setBounds (extraLabelArea.reduced (10, 0));
-            auto extraControl = extraRow.reduced (2, 3);
-            auto removeArea = extraControl.removeFromRight (40);
-            artnetDestIpEditors_[(size_t) i].setBounds (extraControl);
-            artnetDestRemoveButtons_[(size_t) (i - 1)].setBounds (removeArea.reduced (2, 0));
-            artnetDestRemoveButtons_[(size_t) (i - 1)].setVisible (true);
+            auto targetRow = row();
+            rowsPanel_->paramRowRects.add (targetRow);
+
+            auto arrowHost = targetRow.removeFromLeft (36);
+            const int arrowSize = 28;
+            artnetTargetExpandButtons_[(size_t) i].setBounds (
+                arrowHost.getX() + 3 + (arrowHost.getWidth() - arrowSize) / 2,
+                arrowHost.getY() + (arrowHost.getHeight() - arrowSize) / 2,
+                arrowSize, arrowSize);
+            artnetTargetExpandButtons_[(size_t) i].setExpanded (artnetTargetAdapterExpanded_[(size_t) i]);
+
+            auto labelArea = targetRow.removeFromLeft (76);
+            artSendLbls_[(size_t) i].setBounds (labelArea.reduced (6, 0));
+
+            auto controlArea = targetRow.reduced (2, 3);
+            auto actionArea = controlArea.removeFromRight (40);
+            auto portArea = controlArea.removeFromRight (0);
+            juce::ignoreUnused (portArea);
+            artnetDestIpEditors_[(size_t) i].setBounds (controlArea);
+
+            if (i == 0)
+                artnetAddIpButton_.setBounds (actionArea.reduced (2, 0));
+            else
+                artnetDestRemoveButtons_[(size_t) (i - 1)].setBounds (actionArea.reduced (2, 0));
+
+            if (artnetTargetAdapterExpanded_[(size_t) i])
+            {
+                auto adapterRow = row();
+                rowsPanel_->paramRowRects.add (adapterRow);
+                auto spacer = adapterRow.removeFromLeft (36);
+                juce::ignoreUnused (spacer);
+                auto adapterLabelArea = adapterRow.removeFromLeft (76);
+                artAdapterLbls_[(size_t) i].setBounds (adapterLabelArea.reduced (6, 0));
+                artnetTargetAdapterCombos_[(size_t) i].setBounds (adapterRow.reduced (2, 3));
+            }
         }
         fieldRow (artConvertLbl_, artnetConvertStrip_);
         fieldRow (artOffsetLbl_, artnetOffsetEditor_);
@@ -1573,16 +1627,19 @@ void MainContentComponent::resized()
     mtcConvertStrip_.setVisible (outMtcExpanded_);
     mtcOffsetEditor_.setVisible (outMtcExpanded_);
 
-    artnetOutCombo_.setVisible (outArtExpanded_);
     artnetAddIpButton_.setVisible (outArtExpanded_);
     artnetConvertStrip_.setVisible (outArtExpanded_);
     for (int i = 0; i < (int) artnetDestIpEditors_.size(); ++i)
-        artnetDestIpEditors_[(size_t) i].setVisible (outArtExpanded_ && i < artnetDestVisibleCount_);
-    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
     {
-        artnetDestRemoveButtons_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
-        artIpExtraLbls_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
+        const bool rowVisible = outArtExpanded_ && i < artnetDestVisibleCount_;
+        artnetTargetExpandButtons_[(size_t) i].setVisible (rowVisible);
+        artSendLbls_[(size_t) i].setVisible (rowVisible);
+        artnetDestIpEditors_[(size_t) i].setVisible (rowVisible);
+        artAdapterLbls_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
+        artnetTargetAdapterCombos_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
     }
+    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
+        artnetDestRemoveButtons_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
     artnetOffsetEditor_.setVisible (outArtExpanded_);
 }
 
@@ -1750,10 +1807,7 @@ void MainContentComponent::onOutputSettingsChanged()
             bridgeEngine_.startMtcOutput (mtcOutCombo_.getSelectedItemIndex(), err);
     }
 
-    if (artnetOutCombo_.getNumItems() > 0)
-        bridgeEngine_.startArtnetOutput (artnetOutCombo_.getSelectedItemIndex(),
-                                         collectArtnetTargets(),
-                                         err);
+    bridgeEngine_.startArtnetOutput (collectArtnetTargets(), err);
 
     bridgeEngine_.setMtcOutputEnabled (mtcOutSwitch_.getState());
     bridgeEngine_.setArtnetOutputEnabled (artnetOutSwitch_.getState());
@@ -1881,7 +1935,9 @@ void MainContentComponent::timerCallback()
                 fpsIndicatorStrip_->setActiveFps (std::nullopt);
         }
 
-        if (statusButton_.getText().startsWithIgnoreCase ("RUNNING"))
+        if (sourceCombo_.getSelectedId() == 6 && st.inputStatus.startsWithIgnoreCase ("LINK"))
+            setStatusText (st.inputStatus, juce::Colour::fromRGB (0xde, 0x9b, 0x3c));
+        else if (statusButton_.getText().startsWithIgnoreCase ("RUNNING"))
             setStatusText ("STOPPED - no timecode", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     }
 }
@@ -2046,23 +2102,52 @@ void MainContentComponent::refreshNetworkMidiLists()
 
     auto ifaces = bridgeEngine_.artnetInterfaces();
     artnetInCombo_.clear();
-    artnetOutCombo_.clear();
     oscAdapterCombo_.clear();
     oscAdapterCombo_.addItem ("ALL INTERFACES (0.0.0.0)", 1);
     oscAdapterCombo_.addItem ("Loopback (127.0.0.1)", 2);
+    auto refillArtAdapterCombo = [] (juce::ComboBox& combo, const juce::String& previousText, const juce::StringArray& interfaceNames)
+    {
+        combo.clear (juce::dontSendNotification);
+        combo.addItem ("ALL INTERFACES (0.0.0.0)", 1);
+        int itemId = 2;
+        for (int i = 0; i < interfaceNames.size(); ++i)
+        {
+            if (interfaceNames[i].startsWithIgnoreCase ("ALL INTERFACES"))
+                continue;
+            combo.addItem (interfaceNames[i], itemId++);
+        }
+
+        bool restored = false;
+        if (previousText.isNotEmpty())
+        {
+            for (int i = 0; i < combo.getNumItems(); ++i)
+            {
+                if (combo.getItemText (i) == previousText)
+                {
+                    combo.setSelectedItemIndex (i, juce::dontSendNotification);
+                    restored = true;
+                    break;
+                }
+            }
+        }
+        if (! restored && combo.getNumItems() > 0)
+            combo.setSelectedItemIndex (0, juce::dontSendNotification);
+    };
     for (int i = 0; i < ifaces.size(); ++i)
     {
         artnetInCombo_.addItem (ifaces[i], i + 1);
-        artnetOutCombo_.addItem (ifaces[i], i + 1);
         if (! ifaces[i].startsWithIgnoreCase ("ALL INTERFACES"))
             oscAdapterCombo_.addItem (ifaces[i], i + 3);
     }
     if (artnetInCombo_.getNumItems() > 0)
         artnetInCombo_.setSelectedItemIndex (0, juce::dontSendNotification);
-    if (artnetOutCombo_.getNumItems() > 0)
-        artnetOutCombo_.setSelectedItemIndex (0, juce::dontSendNotification);
     if (oscAdapterCombo_.getNumItems() > 0)
         oscAdapterCombo_.setSelectedItemIndex (0, juce::dontSendNotification);
+    for (auto& combo : artnetTargetAdapterCombos_)
+    {
+        const auto previous = combo.getText();
+        refillArtAdapterCombo (combo, previous, ifaces);
+    }
     syncOscIpWithAdapter();
 }
 
@@ -2128,19 +2213,30 @@ void MainContentComponent::updateArtnetIpControls()
 {
     artnetDestVisibleCount_ = juce::jlimit (1, (int) artnetDestIpEditors_.size(), artnetDestVisibleCount_);
     artnetAddIpButton_.setEnabled (artnetDestVisibleCount_ < (int) artnetDestIpEditors_.size());
+    for (int i = 0; i < artnetDestVisibleCount_; ++i)
+        artnetTargetExpandButtons_[(size_t) i].setExpanded (artnetTargetAdapterExpanded_[(size_t) i]);
 }
 
-juce::StringArray MainContentComponent::collectArtnetTargets() const
+juce::Array<engine::ArtnetTarget> MainContentComponent::collectArtnetTargets() const
 {
-    juce::StringArray out;
+    juce::Array<engine::ArtnetTarget> out;
+    juce::StringArray seen;
     for (int i = 0; i < artnetDestVisibleCount_ && i < (int) artnetDestIpEditors_.size(); ++i)
     {
         const auto ip = artnetDestIpEditors_[(size_t) i].getText().trim();
-        if (ip.isNotEmpty() && ! out.contains (ip))
-            out.add (ip);
+        if (ip.isEmpty())
+            continue;
+
+        const int interfaceIndex = artnetTargetAdapterCombos_[(size_t) i].getSelectedItemIndex() - 1;
+        const auto key = juce::String (interfaceIndex) + "|" + ip;
+        if (seen.contains (key))
+            continue;
+
+        seen.add (key);
+        out.add ({ interfaceIndex, ip });
     }
     if (out.isEmpty())
-        out.add ("255.255.255.255");
+        out.add ({ -1, "255.255.255.255" });
     return out;
 }
 
@@ -2183,7 +2279,7 @@ void MainContentComponent::openStatusMonitorWindow()
         keys.add ("ArtNet In:");     vals.add (artnetInCombo_.getText()
                                                + "  |  " + artnetListenIpEditor_.getText());
         keys.add ("ArtNet Out:");    vals.add ((artnetOutSwitch_.getState() ? "ON" : "OFF")
-                                               + juce::String ("  |  ") + artnetOutCombo_.getText());
+                                               + juce::String ("  |  ") + juce::String (collectArtnetTargets().size()) + " target(s)");
         keys.add ("OSC Listen:");    vals.add (oscIpEditor_.getText() + ":" + oscPortEditor_.getText());
         keys.add ("System Time:");   vals.add (systemTimeFpsCombo_.getText());
     };
@@ -2220,7 +2316,6 @@ juce::var MainContentComponent::buildConfigState() const
     obj->setProperty ("mtc_out_enabled", mtcOutSwitch_.getState());
     obj->setProperty ("artnet_in", artnetInCombo_.getText());
     obj->setProperty ("artnet_convert_fps", artnetConvertStrip_.getSelectedFps().has_value() ? frameRateToString (*artnetConvertStrip_.getSelectedFps()) : juce::String());
-    obj->setProperty ("artnet_out", artnetOutCombo_.getText());
     obj->setProperty ("artnet_out_enabled", artnetOutSwitch_.getState());
     obj->setProperty ("artnet_listen_ip", artnetListenIpEditor_.getText());
     obj->setProperty ("osc_adapter", oscAdapterCombo_.getText());
@@ -2235,10 +2330,16 @@ juce::var MainContentComponent::buildConfigState() const
 
     juce::Array<juce::var> artnetTargetsVar;
     const auto artnetTargets = collectArtnetTargets();
-    for (const auto& ip : artnetTargets)
-        artnetTargetsVar.add (ip);
+    for (int i = 0; i < artnetTargets.size(); ++i)
+    {
+        juce::DynamicObject::Ptr targetObj = new juce::DynamicObject();
+        targetObj->setProperty ("ip", artnetTargets.getReference (i).ip);
+        targetObj->setProperty ("adapter", artnetTargetAdapterCombos_[(size_t) i].getText());
+        targetObj->setProperty ("adapter_expanded", artnetTargetAdapterExpanded_[(size_t) i]);
+        artnetTargetsVar.add (juce::var (targetObj.get()));
+    }
     obj->setProperty ("artnet_targets", juce::var (artnetTargetsVar));
-    obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0]);
+    obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0].ip);
     obj->setProperty ("ltc_offset", ltcOffsetEditor_.getText());
     obj->setProperty ("mtc_offset", mtcOffsetEditor_.getText());
     obj->setProperty ("artnet_offset", artnetOffsetEditor_.getText());
@@ -2293,7 +2394,6 @@ bool MainContentComponent::isCurrentConfigEqualToSavedFile() const
         "mtc_out_enabled",
         "artnet_in",
         "artnet_convert_fps",
-        "artnet_out",
         "artnet_out_enabled",
         "artnet_listen_ip",
         "osc_adapter",
@@ -2510,7 +2610,6 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     mtcOutSwitch_.setState ((bool) propOr ("mtc_out_enabled", mtcOutSwitch_.getState()));
     setComboText (artnetInCombo_, propOr ("artnet_in", artnetInCombo_.getText()).toString());
     artnetConvertStrip_.setSelectedFps (fpsFromString (propOr ("artnet_convert_fps", juce::String()).toString()));
-    setComboText (artnetOutCombo_, propOr ("artnet_out", artnetOutCombo_.getText()).toString());
     artnetOutSwitch_.setState ((bool) propOr ("artnet_out_enabled", artnetOutSwitch_.getState()));
     setComboText (oscAdapterCombo_, propOr ("osc_adapter", oscAdapterCombo_.getText()).toString());
     setComboText (oscFpsCombo_, propOr ("osc_fps", oscFpsCombo_.getText()).toString());
@@ -2525,6 +2624,9 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     oscFloatMaxEditor_.setText (propOr ("osc_float_max", oscFloatMaxEditor_.getText()).toString(), juce::dontSendNotification);
     for (auto& e : artnetDestIpEditors_)
         e.setText ("", juce::dontSendNotification);
+    for (auto& combo : artnetTargetAdapterCombos_)
+        combo.setSelectedItemIndex (0, juce::dontSendNotification);
+    artnetTargetAdapterExpanded_ = { true, false, false, false, false };
     artnetDestVisibleCount_ = 1;
     auto artnetTargets = propOr ("artnet_targets", juce::var());
     if (auto* arr = artnetTargets.getArray())
@@ -2532,9 +2634,25 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
         int idx = 0;
         for (const auto& v : *arr)
         {
-            const auto ip = v.toString().trim();
-            if (ip.isNotEmpty() && idx < (int) artnetDestIpEditors_.size())
-                artnetDestIpEditors_[(size_t) idx++].setText (ip, juce::dontSendNotification);
+            if (idx >= (int) artnetDestIpEditors_.size())
+                break;
+
+            if (auto* targetObj = v.getDynamicObject())
+            {
+                const auto ip = targetObj->getProperty ("ip").toString().trim();
+                if (ip.isEmpty())
+                    continue;
+                artnetDestIpEditors_[(size_t) idx].setText (ip, juce::dontSendNotification);
+                setComboText (artnetTargetAdapterCombos_[(size_t) idx], targetObj->getProperty ("adapter").toString());
+                artnetTargetAdapterExpanded_[(size_t) idx] = (bool) targetObj->getProperty ("adapter_expanded");
+                ++idx;
+            }
+            else
+            {
+                const auto ip = v.toString().trim();
+                if (ip.isNotEmpty())
+                    artnetDestIpEditors_[(size_t) idx++].setText (ip, juce::dontSendNotification);
+            }
         }
         artnetDestVisibleCount_ = juce::jmax (1, juce::jmin ((int) artnetDestIpEditors_.size(), idx));
     }
@@ -2651,8 +2769,11 @@ void MainContentComponent::resetToDefaults()
     oscFloatMaxEditor_.setText ("3600", juce::dontSendNotification);
     for (auto& e : artnetDestIpEditors_)
         e.setText ("", juce::dontSendNotification);
+    for (auto& combo : artnetTargetAdapterCombos_)
+        combo.setSelectedItemIndex (0, juce::dontSendNotification);
     artnetDestIpEditors_[0].setText ("255.255.255.255", juce::dontSendNotification);
     artnetDestVisibleCount_ = 1;
+    artnetTargetAdapterExpanded_ = { true, false, false, false, false };
     updateArtnetIpControls();
 
     onInputSettingsChanged();

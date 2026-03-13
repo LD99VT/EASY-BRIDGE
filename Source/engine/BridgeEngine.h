@@ -30,6 +30,12 @@ struct AudioChoice
     int channelCount { 0 };
 };
 
+struct ArtnetTarget
+{
+    int interfaceIndex { -1 };
+    juce::String ip;
+};
+
 struct RuntimeStatus
 {
     bool hasInputTc { false };
@@ -75,7 +81,7 @@ public:
     float getLtcThruPeakLevel() const;
     bool startMtcOutput (int deviceIndex, juce::String& errorOut);
     void stopMtcOutput();
-    bool startArtnetOutput (int interfaceIndex, const juce::StringArray& targetIps, juce::String& errorOut);
+    bool startArtnetOutput (const juce::Array<ArtnetTarget>& targets, juce::String& errorOut);
     void stopArtnetOutput();
     void setLtcOutputEnabled (bool enabled);
     void setMtcOutputEnabled (bool enabled);
@@ -146,7 +152,6 @@ private:
     double ltcOutSampleRate_ { 0.0 };
     int ltcOutBufferSize_ { 0 };
     int mtcOutDeviceIndex_ { -1 };
-    int artnetOutInterfaceIndex_ { -1 };
-    juce::StringArray artnetOutTargets_;
+    juce::Array<ArtnetTarget> artnetOutTargets_;
 };
 } // namespace bridge::engine

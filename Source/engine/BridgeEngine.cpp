@@ -387,29 +387,64 @@ void BridgeEngine::stopMtcOutput()
     mtcOutput_.stop();
 }
 
-bool BridgeEngine::startArtnetOutput (int interfaceIndex, const juce::StringArray& targetIps, juce::String& errorOut)
+bool BridgeEngine::startArtnetOutput (const juce::Array<ArtnetTarget>& targets, juce::String& errorOut)
 {
-    juce::StringArray normalizedTargets;
-    for (const auto& ip : targetIps)
+    juce::Array<ArtnetTarget> normalizedTargets;
+    juce::StringArray targetKeys;
+    for (const auto& target : targets)
     {
-        const auto t = ip.trim();
-        if (t.isNotEmpty() && ! normalizedTargets.contains (t))
-            normalizedTargets.add (t);
+        auto normalized = target;
+        normalized.ip = normalized.ip.trim();
+        if (normalized.ip.isEmpty())
+            continue;
+
+        juce::String key = juce::String (normalized.interfaceIndex) + "|" + normalized.ip;
+        if (targetKeys.contains (key))
+            continue;
+
+        targetKeys.add (key);
+        normalizedTargets.add (normalized);
     }
 
     const bool sameConfig =
         artnetOutput_.getIsRunning()
-        && interfaceIndex == artnetOutInterfaceIndex_
-        && normalizedTargets.joinIntoString ("|") == artnetOutTargets_.joinIntoString ("|");
+        && normalizedTargets.size() == artnetOutTargets_.size()
+        && [&]
+        {
+            for (int i = 0; i < normalizedTargets.size(); ++i)
+            {
+                const auto& a = normalizedTargets.getReference (i);
+                const auto& b = artnetOutTargets_.getReference (i);
+                if (a.interfaceIndex != b.interfaceIndex || a.ip != b.ip)
+                    return false;
+            }
+            return true;
+        }();
     if (! sameConfig)
         artnetOutput_.refreshNetworkInterfaces();
-    if (! sameConfig && ! artnetOutput_.start (interfaceIndex, 6454))
+    if (! sameConfig)
     {
-        errorOut = "Failed to start ArtNet output";
-        return false;
+        juce::Array<ArtnetOutput::Target> outputTargets;
+        const auto interfaces = ::getNetworkInterfaces();
+        for (const auto& target : normalizedTargets)
+        {
+            ArtnetOutput::Target route;
+            route.interfaceIndex = target.interfaceIndex;
+            route.destinationIp = target.ip;
+            if (target.interfaceIndex >= 0 && target.interfaceIndex < interfaces.size())
+            {
+                route.bindIp = interfaces[target.interfaceIndex].ip;
+                route.broadcastIp = interfaces[target.interfaceIndex].broadcast;
+            }
+            outputTargets.add (route);
+        }
+
+        if (! artnetOutput_.start (outputTargets, 6454))
+        {
+            errorOut = "Failed to start ArtNet output";
+            return false;
+        }
     }
-    artnetOutput_.setTargets (normalizedTargets);
-    artnetOutInterfaceIndex_ = interfaceIndex;
     artnetOutTargets_ = normalizedTargets;
     artnetOutEnabled_ = true;
     artnetOutput_.setPaused (true);
@@ -420,7 +455,6 @@ bool BridgeEngine::startArtnetOutput (int interfaceIndex, const juce::StringArra
 void BridgeEngine::stopArtnetOutput()
 {
     artnetOutEnabled_ = false;
-    artnetOutInterfaceIndex_ = -1;
     artnetOutTargets_.clear();
     artnetOutput_.stop();
 }

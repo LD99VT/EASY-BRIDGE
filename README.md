@@ -19,15 +19,24 @@ Receive timecode in one format — send it out in another, simultaneously, with 
 
 ## Supported formats
 
-| Direction | LTC | MTC | ArtNet TC | OSC |
-|-----------|:---:|:---:|:---------:|:---:|
-| Input     | ✓   | ✓   | ✓         | ✓   |
+| Direction | LTC | MTC | ArtNet TC | OSC | System Time |
+|-----------|:---:|:---:|:---------:|:---:|:-----------:|
+| Input     | ✓   | ✓   | ✓         | ✓   | ✓           |
 | Output    | ✓   | ✓   | ✓         |     |
 
 - **LTC** — Linear Timecode over audio (ASIO / WDM / CoreAudio)
 - **MTC** — MIDI Timecode (any MIDI interface)
 - **ArtNet TC** — Timecode over Ethernet via the ArtNet protocol
 - **OSC** — Open Sound Control (receive timecode from OSC-capable software)
+- **System Time** — generate input timecode from the local computer clock
+
+## Recent updates
+
+- Input FPS strip under the main clock now shows `23.976 / 24 / 25 / 29.97 / 30`.
+- `LTC In` and `LTC Out` now use the real audio channel count from the selected device, including stereo pairs such as `1+2`, `3+4`, and more when available.
+- `LTC Out`, `MTC Out`, and `ArtNet Out` now support per-output FPS conversion.
+- `ArtNet Out` now supports up to 5 send targets, each with its own destination IP and collapsible adapter selection.
+- The temporary `Ableton Link` experiment was removed. Current sources remain `LTC`, `MTC`, `ArtNet`, `OSC`, and `System Time`.
 
 ---
 

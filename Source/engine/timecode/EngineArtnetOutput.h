@@ -13,6 +13,14 @@
 class ArtnetOutput : public juce::HighResolutionTimer
 {
 public:
+    struct Target
+    {
+        int interfaceIndex { -1 };
+        juce::String bindIp { "0.0.0.0" };
+        juce::String broadcastIp { "255.255.255.255" };
+        juce::String destinationIp;
+    };
+
     ArtnetOutput()
     {
         refreshNetworkInterfaces();
@@ -47,49 +55,60 @@ public:
     }
 
     //==============================================================================
-    bool start(int interfaceIndex = -1, int targetPort = 6454)
+    bool start(const juce::Array<Target>& targets, int targetPort = 6454)
     {
         stop();
 
         destPort = targetPort;
+        configuredTargets.clear();
+        sockets.clear();
 
-        if (interfaceIndex >= 0 && interfaceIndex < availableInterfaces.size())
+        juce::Array<Target> normalizedTargets;
+        for (const auto& target : targets)
         {
-            selectedInterface = interfaceIndex;
-            broadcastIp = availableInterfaces[interfaceIndex].broadcast;
-            bindIp = availableInterfaces[interfaceIndex].ip;
+            auto t = target;
+            t.destinationIp = t.destinationIp.trim();
+            t.bindIp = t.bindIp.trim();
+            t.broadcastIp = t.broadcastIp.trim();
+            if (t.destinationIp.isEmpty())
+                continue;
+            if (t.bindIp.isEmpty())
+                t.bindIp = "0.0.0.0";
+            if (t.broadcastIp.isEmpty())
+                t.broadcastIp = "255.255.255.255";
+            normalizedTargets.add (t);
         }
-        else
-        {
-            selectedInterface = -1;
-            broadcastIp = "255.255.255.255";
-            bindIp = "0.0.0.0";
-        }
 
-        socket = std::make_unique<juce::DatagramSocket>(false);
+        if (normalizedTargets.isEmpty())
+            normalizedTargets.add ({ -1, "0.0.0.0", "255.255.255.255", "255.255.255.255" });
 
-        if (!socket->bindToPort(0, bindIp))
+        for (const auto& target : normalizedTargets)
         {
-            if (!socket->bindToPort(0))
+            auto routeSocket = std::make_unique<juce::DatagramSocket>(false);
+            if (! routeSocket->bindToPort (0, target.bindIp))
             {
-                socket = nullptr;
-                return false;
+                if (! routeSocket->bindToPort (0))
+                {
+                    stop();
+                    return false;
+                }
             }
-        }
 
-        // Enable SO_BROADCAST so the OS allows sending to broadcast addresses.
-        // Some systems (especially Linux) reject broadcast sends without this.
-        auto rawSock = socket->getRawSocketHandle();
-        if (rawSock >= 0)
-        {
-            int broadcastFlag = 1;
+            auto rawSock = routeSocket->getRawSocketHandle();
+            if (rawSock >= 0)
+            {
+                int broadcastFlag = 1;
 #ifdef _WIN32
-            setsockopt(rawSock, SOL_SOCKET, SO_BROADCAST,
-                       (const char*)&broadcastFlag, sizeof(broadcastFlag));
+                setsockopt(rawSock, SOL_SOCKET, SO_BROADCAST,
+                           (const char*) &broadcastFlag, sizeof (broadcastFlag));
 #else
-            setsockopt(rawSock, SOL_SOCKET, SO_BROADCAST,
-                       &broadcastFlag, sizeof(broadcastFlag));
+                setsockopt(rawSock, SOL_SOCKET, SO_BROADCAST,
+                           &broadcastFlag, sizeof (broadcastFlag));
 #endif
+            }
+
+            sockets.push_back (std::move (routeSocket));
+            configuredTargets.add (target);
         }
 
         isRunningFlag.store(true, std::memory_order_relaxed);
@@ -106,26 +125,18 @@ public:
         paused.store(false, std::memory_order_relaxed);
 
         if (socket != nullptr)
-        {
-            socket->shutdown();
-            socket = nullptr;
-        }
+            socket.reset();
+
+        for (auto& s : sockets)
+            if (s != nullptr)
+                s->shutdown();
+        sockets.clear();
+        configuredTargets.clear();
     }
 
     bool getIsRunning() const { return isRunningFlag.load(std::memory_order_relaxed); }
-    juce::String getBroadcastIp() const { return broadcastIp; }
     uint32_t getSendErrors() const { return sendErrors.load(std::memory_order_relaxed); }
-    void setTargets (const juce::StringArray& ips)
-    {
-        targetIps.clear();
-        for (const auto& ip : ips)
-        {
-            const auto t = ip.trim();
-            if (t.isNotEmpty() && ! targetIps.contains (t))
-                targetIps.add (t);
-        }
-    }
-    juce::StringArray getTargets() const { return targetIps; }
+    juce::Array<Target> getTargets() const { return configuredTargets; }
 
     //==============================================================================
     void setTimecode(const Timecode& tc)
@@ -173,7 +184,7 @@ private:
     {
         if (!isRunningFlag.load(std::memory_order_relaxed)
             || paused.load(std::memory_order_relaxed)
-            || socket == nullptr)
+            || sockets.empty())
             return;
 
         // Single atomic read â€” guarantees frame interval and packet rate code are consistent
@@ -240,17 +251,14 @@ private:
 
         packet[18] = (uint8_t)fpsToRateCode(fps);
 
-        if (targetIps.isEmpty())
+        for (int i = 0; i < (int) configuredTargets.size() && i < (int) sockets.size(); ++i)
         {
-            int written = socket->write (broadcastIp, destPort, packet, sizeof(packet));
-            if (written < 0)
-                sendErrors.fetch_add (1, std::memory_order_relaxed);
-            return;
-        }
+            auto* routeSocket = sockets[(size_t) i].get();
+            if (routeSocket == nullptr)
+                continue;
 
-        for (const auto& target : targetIps)
-        {
-            int written = socket->write (target, destPort, packet, sizeof(packet));
+            const auto& target = configuredTargets.getReference (i);
+            int written = routeSocket->write (target.destinationIp, destPort, packet, sizeof(packet));
             if (written < 0)
                 sendErrors.fetch_add (1, std::memory_order_relaxed);
         }
@@ -265,11 +273,9 @@ private:
     }
 
     std::unique_ptr<juce::DatagramSocket> socket;
-    juce::String broadcastIp = "255.255.255.255";
-    juce::StringArray targetIps;
-    juce::String bindIp = "0.0.0.0";
+    std::vector<std::unique_ptr<juce::DatagramSocket>> sockets;
+    juce::Array<Target> configuredTargets;
     int destPort = 6454;
-    int selectedInterface = -1;
     std::atomic<bool> isRunningFlag { false };
     std::atomic<bool> paused { false };
 
