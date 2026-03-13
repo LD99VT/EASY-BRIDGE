@@ -18,7 +18,8 @@ enum class InputSource
     LTC,
     MTC,
     ArtNet,
-    OSC
+    OSC,
+    SystemTime
 };
 
 struct AudioChoice
@@ -26,6 +27,7 @@ struct AudioChoice
     juce::String typeName;
     juce::String deviceName;
     juce::String displayName;
+    int channelCount { 0 };
 };
 
 struct RuntimeStatus
@@ -37,6 +39,9 @@ struct RuntimeStatus
     juce::String ltcOutStatus { "OFF" };
     juce::String mtcOutStatus { "OFF" };
     juce::String artnetOutStatus { "OFF" };
+    std::optional<FrameRate> ltcOutFps;
+    std::optional<FrameRate> mtcOutFps;
+    std::optional<FrameRate> artnetOutFps;
     juce::String errorText;
 };
 
@@ -77,6 +82,10 @@ public:
     void setArtnetOutputEnabled (bool enabled);
     void setLtcInputGain (float linearGain);
     void setLtcOutputGain (float linearGain);
+    void setSystemTimeFps (FrameRate fps);
+    void setLtcOutputConvertFps (std::optional<FrameRate> fps);
+    void setMtcOutputConvertFps (std::optional<FrameRate> fps);
+    void setArtnetOutputConvertFps (std::optional<FrameRate> fps);
     float getLtcInputPeakLevel() const;
 
     void setInputSource (InputSource source);
@@ -108,6 +117,7 @@ private:
     juce::String oscInAddrStr_;
     juce::String oscInAddrFloat_;
     FrameRate oscInFps_ { FrameRate::FPS_25 };
+    FrameRate systemTimeFps_ { FrameRate::FPS_25 };
     OscValueType oscInValueType_ { OscValueType::Seconds };
     double oscInMaxSeconds_ { 3600.0 };
 
@@ -125,6 +135,9 @@ private:
     bool ltcThruEnabled_ { false };
     bool mtcOutEnabled_ { false };
     bool artnetOutEnabled_ { false };
+    std::optional<FrameRate> ltcOutConvertFps_;
+    std::optional<FrameRate> mtcOutConvertFps_;
+    std::optional<FrameRate> artnetOutConvertFps_;
 
     // Cache active output configs to avoid expensive reopen when unchanged.
     juce::String ltcOutType_;

@@ -235,6 +235,7 @@ private:
     uint16_t shiftRegHigh = 0;
     static constexpr uint16_t LTC_SYNC_WORD = 0xBFFC;
     double samplesSinceLastSync = 0.0;
+    double smoothedFramePeriodSec = 0.0;
     int consecutiveGoodFrames = 0;
 
     void resetDecoder()
@@ -246,6 +247,7 @@ private:
         shiftRegLow = 0;
         shiftRegHigh = 0;
         samplesSinceLastSync = 0.0;
+        smoothedFramePeriodSec = 0.0;
         consecutiveGoodFrames = 0;
         // Initial bit period estimate: use ~27fps midpoint (2160 transitions/sec)
         // to minimize convergence time across all frame rates (24-30fps)
@@ -292,14 +294,20 @@ private:
         if (samplesSinceLastSync > 0.0 && samplesSinceLastSync < currentSampleRate * 2.0)
         {
             double framePeriodSec = samplesSinceLastSync / currentSampleRate;
-            double measuredFps = 1.0 / framePeriodSec;
+            if (smoothedFramePeriodSec <= 0.0)
+                smoothedFramePeriodSec = framePeriodSec;
+            else
+                smoothedFramePeriodSec = (smoothedFramePeriodSec * 0.875) + (framePeriodSec * 0.125);
+
+            double measuredFps = 1.0 / smoothedFramePeriodSec;
 
             FrameRate detected = FrameRate::FPS_25;
-            // NOTE: LTC cannot distinguish 23.976fps from 24fps â€” both use 80 bits
-            // per frame with no drop-frame flag.  The ~0.1% rate difference is too
-            // small to measure reliably from frame-to-frame period.  If 23.976 support
-            // is needed, the user must manually select the frame rate.
-            if (measuredFps < 24.5)       detected = FrameRate::FPS_24;
+            // 23.976 and 24 share the same LTC frame structure, but the
+            // inter-frame period differs slightly. Smoothing the measured
+            // frame period across multiple syncs is stable enough to separate
+            // 23.976 from true 24 on typical CoreAudio clocks.
+            if (measuredFps < 24.10)      detected = FrameRate::FPS_2398;
+            else if (measuredFps < 24.5)  detected = FrameRate::FPS_24;
             else if (measuredFps < 27.0)  detected = FrameRate::FPS_25;
             else if (dropFrame)           detected = FrameRate::FPS_2997;
             else                          detected = FrameRate::FPS_30;
@@ -310,6 +318,7 @@ private:
         }
         else
         {
+            smoothedFramePeriodSec = 0.0;
             consecutiveGoodFrames = 1;
         }
 

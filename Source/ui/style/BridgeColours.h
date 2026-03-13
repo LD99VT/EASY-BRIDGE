@@ -11,4 +11,5 @@ inline const juce::Colour kSection = juce::Colour::fromRGB (0x65, 0x65, 0x65); /
 inline const juce::Colour kInput   = juce::Colour::fromRGB (0x24, 0x24, 0x24); // UI_BG_INPUT
 inline const juce::Colour kHeader  = juce::Colour::fromRGB (0x3a, 0x3a, 0x3a);
 inline const juce::Colour kTeal    = juce::Colour::fromRGB (0x3d, 0x80, 0x70); // UI_TEAL
+inline const juce::Colour kOrange  = juce::Colour::fromRGB (0xde, 0x9b, 0x3c); // UI_ORANGE
 } // namespace bridge

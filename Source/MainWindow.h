@@ -25,6 +25,56 @@ namespace bridge
 class BridgeAudioScanThread;
 class RowsPanel;  // scrollable rows canvas (defined in MainWindow.cpp)
 
+class FpsIndicatorStrip final : public juce::Component
+{
+public:
+    void setActiveFps (std::optional<FrameRate> fps);
+    juce::String getActiveFpsText() const;
+    void paint (juce::Graphics& g) override;
+
+private:
+    std::optional<FrameRate> activeFps_;
+};
+
+class FpsConvertStrip final : public juce::Component
+{
+public:
+    explicit FpsConvertStrip (std::initializer_list<FrameRate> availableRates);
+
+    void setSelectedFps (std::optional<FrameRate> fps);
+    std::optional<FrameRate> getSelectedFps() const { return selectedFps_; }
+    void paint (juce::Graphics& g) override;
+    void mouseUp (const juce::MouseEvent& event) override;
+
+    std::function<void(std::optional<FrameRate>)> onChange;
+
+private:
+    juce::Array<FrameRate> availableRates_;
+    std::optional<FrameRate> selectedFps_;
+};
+
+struct StatusSegment
+{
+    juce::String text;
+    juce::Colour colour;
+};
+
+class StatusBarComponent final : public juce::Component
+{
+public:
+    void setText (juce::String text, juce::Colour colour);
+    void setSegments (juce::Array<StatusSegment> segments);
+    juce::String getText() const { return text_; }
+    void paint (juce::Graphics& g) override;
+    void mouseUp (const juce::MouseEvent&) override;
+
+    std::function<void()> onClick;
+
+private:
+    juce::String text_;
+    juce::Array<StatusSegment> segments_;
+};
+
 class MainContentComponent final : public juce::Component, private juce::Timer
 {
 public:
@@ -60,6 +110,7 @@ private:
                               const juce::Array<engine::AudioChoice>& outputs);
     void refreshNetworkMidiLists();
     void refreshLtcDeviceListsByDriver();
+    void refreshLtcChannelCombos();
     void fillAudioCombo (juce::ComboBox& combo, const juce::Array<engine::AudioChoice>& choices);
     static double comboSampleRate (const juce::ComboBox& combo);
     static int comboBufferSize (const juce::ComboBox& combo);
@@ -69,6 +120,7 @@ private:
     void updateArtnetIpControls();
     juce::StringArray collectArtnetTargets() const;
     void setStatusText (const juce::String& text, juce::Colour colour);
+    void setStatusSegments (juce::Array<StatusSegment> segments);
     void openStatusMonitorWindow();
     void openSettingsMenu();
     void saveConfig();
@@ -108,8 +160,8 @@ private:
     juce::Label titleVersionLabel_;
     HelpCircleButton helpButton_;
     juce::Label tcLabel_;
-    juce::Label tcFpsLabel_;
-    juce::TextButton statusButton_;
+    std::unique_ptr<FpsIndicatorStrip> fpsIndicatorStrip_;
+    StatusBarComponent statusButton_;
     juce::Component::SafePointer<juce::Component> statusMonitor_;
     juce::TextButton settingsButton_ { "Settings" };
     juce::TextButton quitButton_ { "Quit" };
@@ -158,6 +210,7 @@ private:
     juce::Label oscPortLbl_        { {}, "OSC Port:" };
     juce::Label oscAdapterLbl_     { {}, "OSC adapter:" };
     juce::Label oscFpsLbl_         { {}, "OSC FPS:" };
+    juce::Label systemTimeFpsLbl_  { {}, "System FPS:" };
     juce::Label oscStrLbl_         { {}, "OSC str cmd:" };
     juce::Label oscFloatLbl_       { {}, "OSC float cmd:" };
     juce::Label oscFloatTypeLbl_   { {}, "Float type:" };
@@ -167,13 +220,16 @@ private:
     juce::Label outDeviceLbl_  { {}, "Device (out):" };
     juce::Label outChannelLbl_ { {}, "Channel:" };
     juce::Label outRateLbl_    { {}, "Sample rate:" };
+    juce::Label outConvertLbl_ { {}, "Convert FPS:" };
     juce::Label outOffsetLbl_  { {}, "Offset (frames):" };
     juce::Label outLevelLbl_   { {}, "Output Gain:" };
     juce::Label mtcOutLbl_     { {}, "MIDI Output:" };
+    juce::Label mtcConvertLbl_ { {}, "Convert FPS:" };
     juce::Label mtcOffsetLbl_  { {}, "Offset (frames):" };
     juce::Label artOutLbl_     { {}, "Interface:" };
     juce::Label artIpLbl_      { {}, "Destination IP:" };
     std::array<juce::Label, 4> artIpExtraLbls_;
+    juce::Label artConvertLbl_ { {}, "Convert FPS:" };
     juce::Label artOffsetLbl_  { {}, "Offset (frames):" };
 
     juce::ComboBox ltcInDeviceCombo_;
@@ -190,6 +246,7 @@ private:
     juce::TextEditor oscIpEditor_;
     juce::TextEditor oscPortEditor_;
     juce::ComboBox oscFpsCombo_;
+    juce::ComboBox systemTimeFpsCombo_;
     juce::TextEditor oscAddrStrEditor_;
     juce::TextEditor oscAddrFloatEditor_;
     juce::ComboBox   oscFloatTypeCombo_;
@@ -198,6 +255,7 @@ private:
     juce::ComboBox ltcOutDeviceCombo_;
     juce::ComboBox ltcOutChannelCombo_;
     juce::ComboBox ltcOutSampleRateCombo_;
+    FpsConvertStrip ltcConvertStrip_ { { FrameRate::FPS_2398, FrameRate::FPS_24, FrameRate::FPS_25, FrameRate::FPS_2997, FrameRate::FPS_30 } };
     juce::TextEditor ltcOffsetEditor_;
     juce::Slider ltcOutLevelSlider_;
     MacSwitch ltcOutSwitch_;
@@ -205,6 +263,7 @@ private:
     juce::Label ltcThruLbl_ { {}, "Thru" };
 
     juce::ComboBox mtcOutCombo_;
+    FpsConvertStrip mtcConvertStrip_ { { FrameRate::FPS_24, FrameRate::FPS_25, FrameRate::FPS_2997, FrameRate::FPS_30 } };
     juce::TextEditor mtcOffsetEditor_;
     MacSwitch mtcOutSwitch_;
 
@@ -213,6 +272,7 @@ private:
     std::array<juce::TextButton, 4> artnetDestRemoveButtons_;
     juce::TextButton artnetAddIpButton_ { "+ Add IP" };
     int artnetDestVisibleCount_ { 1 };
+    FpsConvertStrip artnetConvertStrip_ { { FrameRate::FPS_24, FrameRate::FPS_25, FrameRate::FPS_2997, FrameRate::FPS_30 } };
     juce::TextEditor artnetOffsetEditor_;
     MacSwitch artnetOutSwitch_;
 

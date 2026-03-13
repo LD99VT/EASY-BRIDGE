@@ -2,4 +2,4 @@
 ; Both CMake (CMakeLists.txt) and Inno Setup (installer_bridge.iss)
 ; read the version number from this file.
 
-#define AppVersion "2.6.3"
+#define AppVersion "2.6.4"

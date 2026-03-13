@@ -7,6 +7,56 @@ namespace bridge::engine
 {
 namespace
 {
+FrameRate protocolSafeFps (FrameRate fps, bool allow2398)
+{
+    if (! allow2398 && fps == FrameRate::FPS_2398)
+        return FrameRate::FPS_24;
+    return fps;
+}
+
+int queryDeviceChannelCount (juce::AudioIODeviceType& type, const juce::String& name, bool wantInputs)
+{
+    juce::AudioDeviceManager probeMgr;
+    probeMgr.initialise (wantInputs ? 128 : 0, wantInputs ? 0 : 128, nullptr, false);
+    probeMgr.setCurrentAudioDeviceType (type.getTypeName(), false);
+
+    if (auto* currentType = probeMgr.getCurrentDeviceTypeObject())
+        currentType->scanForDevices();
+
+    auto setup = probeMgr.getAudioDeviceSetup();
+    setup.inputDeviceName = wantInputs ? name : "";
+    setup.outputDeviceName = wantInputs ? "" : name;
+    setup.useDefaultInputChannels = wantInputs;
+    setup.useDefaultOutputChannels = ! wantInputs;
+
+    const auto err = probeMgr.setAudioDeviceSetup (setup, true);
+    if (err.isNotEmpty())
+        return 0;
+
+    auto* device = probeMgr.getCurrentAudioDevice();
+    if (device == nullptr)
+        return 0;
+
+    int count = wantInputs
+        ? device->getActiveInputChannels().countNumberOfSetBits()
+        : device->getActiveOutputChannels().countNumberOfSetBits();
+
+    if (count <= 0)
+        count = wantInputs ? device->getInputChannelNames().size()
+                           : device->getOutputChannelNames().size();
+
+    return count;
+}
+
+int decodeStereoPairStart (int channel)
+{
+    if (channel == -1)
+        return 0;
+    if (channel <= -2)
+        return (-channel) - 2;
+    return -1;
+}
+
 juce::Array<AudioChoice> scanAudioDevices (bool wantInputs)
 {
     juce::Array<AudioChoice> result;
@@ -26,6 +76,7 @@ juce::Array<AudioChoice> scanAudioDevices (bool wantInputs)
             c.typeName = type->getTypeName();
             c.deviceName = name;
             c.displayName = AudioDeviceEntry::makeDisplayName (c.typeName, c.deviceName);
+            c.channelCount = queryDeviceChannelCount (*type, name, wantInputs);
             result.add (c);
         }
     }
@@ -76,12 +127,15 @@ juce::StringArray BridgeEngine::artnetInterfaces()
 
 bool BridgeEngine::startLtcInput (const AudioChoice& choice, int channel, double sampleRate, int bufferSize, juce::String& errorOut)
 {
-    const int ch = juce::jmax (0, channel);
+    const int stereoStart = decodeStereoPairStart (channel);
+    const bool stereoPair = (stereoStart >= 0);
+    const int ltcCh = stereoPair ? stereoStart : juce::jmax (0, channel);
+    const int thruCh = stereoPair ? (stereoStart + 1) : ltcCh;
     const bool sameConfig =
         ltcInput_.getIsRunning()
         && choice.typeName == ltcInType_
         && choice.deviceName == ltcInDevice_
-        && ch == ltcInChannel_
+        && channel == ltcInChannel_
         && std::abs (sampleRate - ltcInSampleRate_) < 0.5
         && bufferSize == ltcInBufferSize_;
 
@@ -91,9 +145,9 @@ bool BridgeEngine::startLtcInput (const AudioChoice& choice, int channel, double
         return true;
     }
 
-    bool ok = ltcInput_.start (choice.typeName, choice.deviceName, ch, ch, sampleRate, bufferSize);
+    bool ok = ltcInput_.start (choice.typeName, choice.deviceName, ltcCh, thruCh, sampleRate, bufferSize);
     if (! ok && (sampleRate > 0.0 || bufferSize > 0))
-        ok = ltcInput_.start (choice.typeName, choice.deviceName, ch, ch, 0.0, 0);
+        ok = ltcInput_.start (choice.typeName, choice.deviceName, ltcCh, thruCh, 0.0, 0);
     if (! ok)
     {
         errorOut = "Failed to start LTC input";
@@ -102,7 +156,7 @@ bool BridgeEngine::startLtcInput (const AudioChoice& choice, int channel, double
 
     ltcInType_ = choice.typeName;
     ltcInDevice_ = choice.deviceName;
-    ltcInChannel_ = ch;
+    ltcInChannel_ = channel;
     ltcInSampleRate_ = sampleRate;
     ltcInBufferSize_ = bufferSize;
     errorOut.clear();
@@ -211,14 +265,19 @@ void BridgeEngine::stopOscInput()
 
 bool BridgeEngine::startLtcOutput (const AudioChoice& choice, int channel, double sampleRate, int bufferSize, juce::String& errorOut)
 {
-    const int ch = juce::jmax (-1, channel);
+    const int ch = channel;
+    const int outStereoStart = decodeStereoPairStart (ch);
+    const bool outStereo = (outStereoStart >= 0);
+    const int outPrimaryCh = outStereo ? outStereoStart : juce::jmax (0, ch);
+    const int inStereoStart = decodeStereoPairStart (ltcInChannel_);
+    const bool inStereo = (inStereoStart >= 0);
+    const int inPrimaryCh = inStereo ? inStereoStart : ltcInChannel_;
 
     // Guard: same LTC device+channel for IN and OUT is unstable on some drivers.
     if (ltcInput_.getIsRunning()
         && choice.typeName == ltcInType_
         && choice.deviceName == ltcInDevice_
-        && ch >= 0
-        && ch == ltcInChannel_)
+        && outPrimaryCh == inPrimaryCh)
     {
         errorOut = "LTC IN/OUT conflict: same device and channel";
         return false;
@@ -397,6 +456,26 @@ void BridgeEngine::setLtcOutputGain (float linearGain)
     ltcOutput_.setOutputGain (juce::jlimit (0.0f, 2.0f, linearGain));
 }
 
+void BridgeEngine::setSystemTimeFps (FrameRate fps)
+{
+    systemTimeFps_ = sanitizeFps (fps);
+}
+
+void BridgeEngine::setLtcOutputConvertFps (std::optional<FrameRate> fps)
+{
+    ltcOutConvertFps_ = fps.has_value() ? std::optional<FrameRate> { sanitizeFps (*fps) } : std::nullopt;
+}
+
+void BridgeEngine::setMtcOutputConvertFps (std::optional<FrameRate> fps)
+{
+    mtcOutConvertFps_ = fps.has_value() ? std::optional<FrameRate> { sanitizeFps (*fps) } : std::nullopt;
+}
+
+void BridgeEngine::setArtnetOutputConvertFps (std::optional<FrameRate> fps)
+{
+    artnetOutConvertFps_ = fps.has_value() ? std::optional<FrameRate> { sanitizeFps (*fps) } : std::nullopt;
+}
+
 float BridgeEngine::getLtcInputPeakLevel() const
 {
     return juce::jlimit (0.0f, 1.5f, ltcInput_.getLtcPeakLevel());
@@ -502,6 +581,19 @@ RuntimeStatus BridgeEngine::tick()
                 st.inputStatus = oscInput_.getIsRunning() ? "OSC NO SIGNAL" : "OSC STOPPED";
             }
             break;
+        case InputSource::SystemTime:
+        {
+            fps = sanitizeFps (systemTimeFps_);
+            const auto now = juce::Time::getCurrentTime();
+            const int64 msSinceMidnight = (int64) now.getHours() * 3600000
+                                        + (int64) now.getMinutes() * 60000
+                                        + (int64) now.getSeconds() * 1000
+                                        + now.getMilliseconds();
+            tc = wallClockToTimecode ((double) msSinceMidnight, fps);
+            hasInput = true;
+            st.inputStatus = "SYSTEM TIME";
+            break;
+        }
     }
 
     st.hasInputTc = hasInput;
@@ -520,9 +612,11 @@ RuntimeStatus BridgeEngine::tick()
 
     if (ltcOutEnabled_ && ltcOutput_.getIsRunning())
     {
+        const FrameRate outputFps = protocolSafeFps (sanitizeFps (ltcOutConvertFps_.value_or (fps)), true);
         ltcOutput_.setPaused (false);
-        ltcOutput_.setFrameRate (fps);
-        ltcOutput_.setTimecode (applyOffsetSafe (tc, ltcOffset_, fps));
+        ltcOutput_.setFrameRate (outputFps);
+        ltcOutput_.setTimecode (applyOffsetSafe (convertTimecodeRate (tc, fps, outputFps), ltcOffset_, outputFps));
+        st.ltcOutFps = outputFps;
     }
     else if (ltcOutput_.getIsRunning())
     {
@@ -530,9 +624,11 @@ RuntimeStatus BridgeEngine::tick()
     }
     if (mtcOutEnabled_ && mtcOutput_.getIsRunning())
     {
+        const FrameRate outputFps = protocolSafeFps (sanitizeFps (mtcOutConvertFps_.value_or (fps)), false);
         mtcOutput_.setPaused (false);
-        mtcOutput_.setFrameRate (fps);
-        mtcOutput_.setTimecode (applyOffsetSafe (tc, mtcOffset_, fps));
+        mtcOutput_.setFrameRate (outputFps);
+        mtcOutput_.setTimecode (applyOffsetSafe (convertTimecodeRate (tc, fps, outputFps), mtcOffset_, outputFps));
+        st.mtcOutFps = outputFps;
     }
     else if (mtcOutput_.getIsRunning())
     {
@@ -540,9 +636,11 @@ RuntimeStatus BridgeEngine::tick()
     }
     if (artnetOutEnabled_ && artnetOutput_.getIsRunning())
     {
+        const FrameRate outputFps = protocolSafeFps (sanitizeFps (artnetOutConvertFps_.value_or (fps)), false);
         artnetOutput_.setPaused (false);
-        artnetOutput_.setFrameRate (fps);
-        artnetOutput_.setTimecode (applyOffsetSafe (tc, artnetOffset_, fps));
+        artnetOutput_.setFrameRate (outputFps);
+        artnetOutput_.setTimecode (applyOffsetSafe (convertTimecodeRate (tc, fps, outputFps), artnetOffset_, outputFps));
+        st.artnetOutFps = outputFps;
     }
     else if (artnetOutput_.getIsRunning())
     {
