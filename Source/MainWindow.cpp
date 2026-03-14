@@ -2340,6 +2340,7 @@ juce::var MainContentComponent::buildConfigState() const
     }
     obj->setProperty ("artnet_targets", juce::var (artnetTargetsVar));
     obj->setProperty ("artnet_dest", artnetTargets.isEmpty() ? juce::String ("255.255.255.255") : artnetTargets[0].ip);
+    obj->setProperty ("artnet_out", artnetTargetAdapterCombos_[0].getText());
     obj->setProperty ("ltc_offset", ltcOffsetEditor_.getText());
     obj->setProperty ("mtc_offset", mtcOffsetEditor_.getText());
     obj->setProperty ("artnet_offset", artnetOffsetEditor_.getText());
@@ -2436,6 +2437,7 @@ bool MainContentComponent::shouldPromptSaveOnClose() const
 void MainContentComponent::prepareStartupStateBeforeShow()
 {
     loadRuntimePrefs();
+    refreshNetworkMidiLists();
     maybeAutoLoadConfig();
     updateWindowHeight();
 
@@ -2628,6 +2630,7 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
         combo.setSelectedItemIndex (0, juce::dontSendNotification);
     artnetTargetAdapterExpanded_ = { true, false, false, false, false };
     artnetDestVisibleCount_ = 1;
+    const auto legacyArtnetAdapter = propOr ("artnet_out", juce::String()).toString();
     auto artnetTargets = propOr ("artnet_targets", juce::var());
     if (auto* arr = artnetTargets.getArray())
     {
@@ -2658,6 +2661,8 @@ void MainContentComponent::loadConfigFromFile (const juce::File& cfgFile)
     }
     if (artnetDestIpEditors_[0].getText().trim().isEmpty())
         artnetDestIpEditors_[0].setText (propOr ("artnet_dest", juce::String ("255.255.255.255")).toString(), juce::dontSendNotification);
+    if (artnetTargetAdapterCombos_[0].getSelectedItemIndex() <= 0 && legacyArtnetAdapter.isNotEmpty())
+        setComboText (artnetTargetAdapterCombos_[0], legacyArtnetAdapter);
     updateArtnetIpControls();
     ltcOffsetEditor_.setText (propOr ("ltc_offset", ltcOffsetEditor_.getText()).toString(), juce::dontSendNotification);
     mtcOffsetEditor_.setText (propOr ("mtc_offset", mtcOffsetEditor_.getText()).toString(), juce::dontSendNotification);
