@@ -17,7 +17,7 @@ FrameRate protocolSafeFps (FrameRate fps, bool allow2398)
 int queryDeviceChannelCount (juce::AudioIODeviceType& type, const juce::String& name, bool wantInputs)
 {
     juce::AudioDeviceManager probeMgr;
-    probeMgr.initialise (wantInputs ? 128 : 0, wantInputs ? 0 : 128, nullptr, false);
+    probeMgr.initialise (0, 0, nullptr, false);
     probeMgr.setCurrentAudioDeviceType (type.getTypeName(), false);
 
     if (auto* currentType = probeMgr.getCurrentDeviceTypeObject())
@@ -76,7 +76,6 @@ juce::Array<AudioChoice> scanAudioDevices (bool wantInputs)
             c.typeName = type->getTypeName();
             c.deviceName = name;
             c.displayName = AudioDeviceEntry::makeDisplayName (c.typeName, c.deviceName);
-            c.channelCount = queryDeviceChannelCount (*type, name, wantInputs);
             result.add (c);
         }
     }
@@ -105,6 +104,23 @@ juce::Array<AudioChoice> BridgeEngine::scanAudioInputs() const
 juce::Array<AudioChoice> BridgeEngine::scanAudioOutputs() const
 {
     return scanAudioDevices (false);
+}
+
+int BridgeEngine::queryAudioChannelCount (const AudioChoice& choice, bool wantInputs)
+{
+    juce::AudioDeviceManager tempMgr;
+    tempMgr.initialise (0, 0, nullptr, false);
+
+    for (auto* type : tempMgr.getAvailableDeviceTypes())
+    {
+        if (type == nullptr || type->getTypeName() != choice.typeName)
+            continue;
+
+        type->scanForDevices();
+        return queryDeviceChannelCount (*type, choice.deviceName, wantInputs);
+    }
+
+    return 0;
 }
 
 juce::StringArray BridgeEngine::midiInputs()

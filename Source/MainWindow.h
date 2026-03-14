@@ -83,6 +83,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    std::function<void()> onFirstPaint;
     bool closeToTrayEnabled() const { return closeToTray_; }
     void prepareStartupStateBeforeShow();
     bool shouldPromptSaveOnClose() const;
@@ -151,6 +152,7 @@ private:
     juce::Font titleEasyFont_;
     juce::Font titleBridgeFont_;
     juce::Font monoFont_;
+    bool firstPaintDelivered_ { false };
     bool hasLatchedTc_ { false };
     Timecode latchedTc_ {};
     FrameRate latchedFps_ { FrameRate::FPS_25 };

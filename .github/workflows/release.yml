@@ -158,4 +158,5 @@ jobs:
             dist/easybridge-win64/EasyBridge_Setup_*.exe
             dist/easybridge-macos-universal/EasyBridge-*.dmg
 
+          body_path: .github/release-notes.md
           generate_release_notes: true

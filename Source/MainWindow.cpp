@@ -613,13 +613,36 @@ public:
 
     void run() override
     {
-        engine::BridgeEngine probeEngine;
-        auto inputs = probeEngine.scanAudioInputs();
-
-        if (threadShouldExit())
+        juce::Array<engine::AudioChoice> inputs, outputs;
+        if (tempManager_ == nullptr)
             return;
 
-        auto outputs = probeEngine.scanAudioOutputs();
+        for (auto* type : tempManager_->getAvailableDeviceTypes())
+        {
+            if (threadShouldExit() || type == nullptr)
+                return;
+
+            const auto typeName = type->getTypeName();
+            type->scanForDevices();
+
+            for (const auto& name : type->getDeviceNames (true))
+            {
+                engine::AudioChoice choice;
+                choice.typeName = typeName;
+                choice.deviceName = name;
+                choice.displayName = AudioDeviceEntry::makeDisplayName (typeName, name);
+                inputs.add (choice);
+            }
+
+            for (const auto& name : type->getDeviceNames (false))
+            {
+                engine::AudioChoice choice;
+                choice.typeName = typeName;
+                choice.deviceName = name;
+                choice.displayName = AudioDeviceEntry::makeDisplayName (typeName, name);
+                outputs.add (choice);
+            }
+        }
 
         if (threadShouldExit())
             return;
@@ -631,6 +654,8 @@ public:
                 owner->onAudioScanComplete (inputs, outputs);
         });
     }
+
+    std::unique_ptr<juce::AudioDeviceManager> tempManager_;
 
 private:
     juce::Component::SafePointer<MainContentComponent> safeOwner_;
@@ -1269,6 +1294,13 @@ void MainContentComponent::applyLookAndFeel()
 void MainContentComponent::paint (juce::Graphics& g)
 {
     g.fillAll (kBg);
+
+    if (! firstPaintDelivered_)
+    {
+        firstPaintDelivered_ = true;
+        if (onFirstPaint != nullptr)
+            juce::MessageManager::callAsync ([cb = onFirstPaint] { if (cb != nullptr) cb(); });
+    }
 
     if (! headerRect_.isEmpty())
     {
@@ -1956,6 +1988,8 @@ void MainContentComponent::startAudioDeviceScan()
     }
 
     scanThread_ = std::make_unique<BridgeAudioScanThread> (this);
+    scanThread_->tempManager_ = std::make_unique<juce::AudioDeviceManager>();
+    scanThread_->tempManager_->initialise (128, 128, nullptr, false);
     scanThread_->startThread();
 }
 
@@ -2068,7 +2102,12 @@ void MainContentComponent::refreshLtcChannelCombos()
     {
         const int realIdx = filteredInputIndices_[inIdx];
         if (juce::isPositiveAndBelow (realIdx, inputChoices_.size()))
-            inputChannelCount = inputChoices_[realIdx].channelCount;
+        {
+            auto& choice = inputChoices_.getReference (realIdx);
+            if (choice.channelCount <= 0)
+                choice.channelCount = engine::BridgeEngine::queryAudioChannelCount (choice, true);
+            inputChannelCount = choice.channelCount;
+        }
     }
     refill (ltcInChannelCombo_, inputChannelCount);
 
@@ -2079,7 +2118,12 @@ void MainContentComponent::refreshLtcChannelCombos()
     {
         const int realIdx = filteredOutputIndices_[outIdx];
         if (juce::isPositiveAndBelow (realIdx, outputChoices_.size()))
-            outputChannelCount = outputChoices_[realIdx].channelCount;
+        {
+            auto& choice = outputChoices_.getReference (realIdx);
+            if (choice.channelCount <= 0)
+                choice.channelCount = engine::BridgeEngine::queryAudioChannelCount (choice, false);
+            outputChannelCount = choice.channelCount;
+        }
     }
     refill (ltcOutChannelCombo_, outputChannelCount);
 }
@@ -2858,6 +2902,8 @@ MainWindow::MainWindow()
                             juce::Colours::black,
                             juce::DocumentWindow::minimiseButton | juce::DocumentWindow::closeButton)
 {
+    const auto windowBg = juce::Colour::fromRGB (0x11, 0x12, 0x16);
+    setColour (juce::DocumentWindow::backgroundColourId, windowBg);
     setColour (juce::ResizableWindow::backgroundColourId, juce::Colour::fromRGB (0x11, 0x12, 0x16));
     setUsingNativeTitleBar (true);
     // Allow vertical resize only; width is fixed at 430 by the equal min/max below.
@@ -2867,7 +2913,16 @@ MainWindow::MainWindow()
     setResizeLimits (430, 420, 430, 8192);
     setContentOwned (new MainContentComponent(), true);
     if (auto* content = dynamic_cast<MainContentComponent*> (getContentComponent()))
+    {
+        setAlpha (0.0f);
+        content->onFirstPaint = [safe = juce::Component::SafePointer<MainWindow> (this)]
+        {
+            if (safe != nullptr)
+                safe->setAlpha (1.0f);
+        };
         content->prepareStartupStateBeforeShow();
+        content->resized();
+    }
     // After setContentOwned the window is already sized to the content's preferred
     // height (set via setSize() in MainContentComponent::MainContentComponent()).
     // Just centre on screen without forcing the height back to a hardcoded value.
@@ -2880,6 +2935,7 @@ MainWindow::MainWindow()
     setVisible (true);
 
 #if JUCE_WINDOWS
+    platform::applyNativeDarkTitleBar (*this);
     juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainWindow> (this)]
     {
         if (safe == nullptr)
