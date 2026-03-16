@@ -18,7 +18,9 @@
 #include "ui/widgets/DotToggle.h"
 #include "ui/widgets/MacSwitch.h"
 #include "ui/widgets/LevelMeter.h"
+#include "ui/widgets/StatusBarComponent.h"
 #include "ui/DarkDialog.h"
+#include "ui/windows/BridgeAboutDialog.h"
 
 namespace bridge
 {
@@ -51,28 +53,6 @@ public:
 private:
     juce::Array<FrameRate> availableRates_;
     std::optional<FrameRate> selectedFps_;
-};
-
-struct StatusSegment
-{
-    juce::String text;
-    juce::Colour colour;
-};
-
-class StatusBarComponent final : public juce::Component
-{
-public:
-    void setText (juce::String text, juce::Colour colour);
-    void setSegments (juce::Array<StatusSegment> segments);
-    juce::String getText() const { return text_; }
-    void paint (juce::Graphics& g) override;
-    void mouseUp (const juce::MouseEvent&) override;
-
-    std::function<void()> onClick;
-
-private:
-    juce::String text_;
-    juce::Array<StatusSegment> segments_;
 };
 
 class MainContentComponent final : public juce::Component, private juce::Timer
@@ -123,7 +103,12 @@ private:
     void setStatusText (const juce::String& text, juce::Colour colour);
     void setStatusSegments (juce::Array<StatusSegment> segments);
     void openStatusMonitorWindow();
-    void openSettingsMenu();
+    void openFileMenu();
+    void openViewMenu();
+    void openHelpMenu();
+    void collapseAll();
+    void expandAll();
+    void openAboutDialog();
     void saveConfig();
     void saveConfigAs();
     void loadConfigFrom();
@@ -160,13 +145,13 @@ private:
     juce::Label titleEasyLabel_;
     juce::Label titleBridgeLabel_;
     juce::Label titleVersionLabel_;
-    HelpCircleButton helpButton_;
     juce::Label tcLabel_;
     std::unique_ptr<FpsIndicatorStrip> fpsIndicatorStrip_;
     StatusBarComponent statusButton_;
     juce::Component::SafePointer<juce::Component> statusMonitor_;
-    juce::TextButton settingsButton_ { "Settings" };
-    juce::TextButton quitButton_ { "Quit" };
+    juce::TextButton fileMenuBtn_  { "File" };
+    juce::TextButton viewMenuBtn_  { "View" };
+    juce::TextButton helpMenuBtn_  { "Help" };
     bool closeToTray_ { false };
     bool autoLoadOnStartup_ { false };
     bool configDirty_ { true };
@@ -290,7 +275,6 @@ private:
 
     juce::Rectangle<int> headerRect_;
     juce::Rectangle<int> statusRect_;
-    juce::Rectangle<int> buttonRowRect_;
 };
 
 class MainWindow final : public juce::DocumentWindow

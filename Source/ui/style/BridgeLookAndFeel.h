@@ -38,6 +38,19 @@ public:
             return;
         }
 
+        // Flat/transparent buttons (menu bar) — no fill, no border
+        if (c.isTransparent())
+        {
+            if (isButtonDown)
+                g.setColour (juce::Colour (0x30ffffff));
+            else if (isMouseOverButton)
+                g.setColour (juce::Colour (0x18ffffff));
+            else
+                return;
+            g.fillRoundedRectangle (bounds, 4.0f);
+            return;
+        }
+
         if (isButtonDown)
             c = c.darker (0.15f);
         else if (isMouseOverButton)

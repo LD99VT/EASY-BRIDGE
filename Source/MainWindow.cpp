@@ -136,62 +136,8 @@ void FpsConvertStrip::mouseUp (const juce::MouseEvent& event)
     }
 }
 
-void StatusBarComponent::setText (juce::String text, juce::Colour colour)
-{
-    text_ = std::move (text);
-    segments_.clearQuick();
-    segments_.add ({ text_, colour });
-    repaint();
-}
-
-void StatusBarComponent::setSegments (juce::Array<StatusSegment> segments)
-{
-    segments_ = std::move (segments);
-    text_.clear();
-    for (int i = 0; i < segments_.size(); ++i)
-        text_ += segments_.getReference (i).text;
-    repaint();
-}
-
-void StatusBarComponent::paint (juce::Graphics& g)
-{
-    auto area = getLocalBounds();
-    if (area.isEmpty())
-        return;
-
-    g.setColour (kRow);
-    g.fillRoundedRectangle (area.toFloat(), 6.0f);
-
-    if (segments_.isEmpty())
-        return;
-
-    auto fontOptions = juce::FontOptions (15.0f);
-    fontOptions = fontOptions.withStyle ("Medium");
-    juce::Font font (fontOptions);
-    g.setFont (font);
-
-    float totalWidth = 0.0f;
-    for (const auto& segment : segments_)
-        totalWidth += font.getStringWidthFloat (segment.text);
-
-    float x = juce::jmax (8.0f, (area.getWidth() - totalWidth) * 0.5f);
-
-    for (const auto& segment : segments_)
-    {
-        const float w = font.getStringWidthFloat (segment.text);
-        g.setColour (segment.colour);
-        g.drawFittedText (segment.text,
-                          juce::Rectangle<int> ((int) std::round (x), area.getY(), (int) std::ceil (w), area.getHeight()),
-                          juce::Justification::centredLeft, 1);
-        x += w;
-    }
-}
-
-void StatusBarComponent::mouseUp (const juce::MouseEvent&)
-{
-    if (onClick)
-        onClick();
-}
+// StatusBarComponent implementation → moved to ui/widgets/StatusBarComponent.h
+// (inline header-only implementation)
 
 namespace
 {
@@ -204,7 +150,7 @@ constexpr int kOuterMargin         = 8;
 constexpr int kHeaderHeight        = 40;
 constexpr int kTimerHeight         = 90;
 constexpr int kTopSectionGap       = 4;
-constexpr int kBottomButtonsHeight = 40;
+constexpr int kMenuBarHeight       = 24;
 // Colours live in BridgeColours.h (included via MainWindow.h)
 
 juce::String parseBindIpFromAdapterLabel (juce::String text)
@@ -728,8 +674,17 @@ MainContentComponent::MainContentComponent()
     titleVersionLabel_.setFont (juce::FontOptions (12.0f));
     addAndMakeVisible (titleVersionLabel_);
 
-    helpButton_.onClick = [this] { openHelpPage(); };
-    addAndMakeVisible (helpButton_);
+    for (auto* b : { &fileMenuBtn_, &viewMenuBtn_, &helpMenuBtn_ })
+    {
+        b->setColour (juce::TextButton::buttonColourId,   juce::Colours::transparentBlack);
+        b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2a2a2a));
+        b->setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffcccccc));
+        b->setColour (juce::TextButton::textColourOnId,   juce::Colours::white);
+        addAndMakeVisible (*b);
+    }
+    fileMenuBtn_.onClick = [this] { openFileMenu(); };
+    viewMenuBtn_.onClick = [this] { openViewMenu(); };
+    helpMenuBtn_.onClick = [this] { openHelpMenu(); };
 
     tcLabel_.setText ("00:00:00:00", juce::dontSendNotification);
     tcLabel_.setJustificationType (juce::Justification::centred);
@@ -747,26 +702,6 @@ MainContentComponent::MainContentComponent()
     statusButton_.setText ("STOPPED", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     statusButton_.onClick = [this] { openStatusMonitorWindow(); };
     addAndMakeVisible (statusButton_);
-
-    settingsButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-    settingsButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-    settingsButton_.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    settingsButton_.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-    settingsButton_.onClick = [this] { openSettingsMenu(); };
-    addAndMakeVisible (settingsButton_);
-
-    quitButton_.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0xb6, 0x45, 0x40));
-    quitButton_.setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0xb6, 0x45, 0x40));
-    quitButton_.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    quitButton_.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-    quitButton_.onClick = [this]
-    {
-        if (auto* window = findParentComponentOfClass<MainWindow>())
-            window->quitFromTray();
-        else
-            juce::JUCEApplication::getInstance()->systemRequestedQuit();
-    };
-    addAndMakeVisible (quitButton_);
 
     sourceCombo_.addItem ("LTC", 1);
     sourceCombo_.addItem ("MTC", 2);
@@ -1153,8 +1088,9 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
 {
     int h = 16; // outer margins
     h += 40 + 4;  // title
-    h += 90;     // tc
-    h += kCompactBarHeight + 4;  // tc fps
+    h += kMenuBarHeight + 4;  // menu bar strip
+    h += 90 + 4;  // tc + gap before fps
+    h += kCompactBarHeight + 4;  // tc fps + gap after fps
 
     auto addRows = [&h] (int count)
     {
@@ -1191,8 +1127,7 @@ int MainContentComponent::calcHeightForState (bool sourceExpanded, int sourceId,
 
     h += 4; // gap before status
     h += kCompactBarHeight; // status
-    h += 4; // gap
-    h += 40; // settings/quit buttons
+    h += 4; // trailing gap (matches kBottomStripH)
     return juce::jmax (420, h);  // no upper cap — height = sum of rows + gaps
 }
 
@@ -1322,17 +1257,14 @@ void MainContentComponent::paint (juce::Graphics& g)
     // Section and param row backgrounds are painted by RowsPanel::paint()
     // (which lives inside rowsViewport_).
 
-    if (! buttonRowRect_.isEmpty())
-    {
-        g.setColour (juce::Colour::fromRGB (0x2f, 0x2f, 0x2f));
-        g.drawRoundedRectangle (buttonRowRect_.toFloat(), 4.0f, 1.0f);
-    }
+    // (menu bar has no separate background — it sits flush in the window bg)
 }
 
 void MainContentComponent::resized()
 {
-    constexpr int kBottomStripH = kTopSectionGap + kCompactBarHeight + kTopSectionGap + kBottomButtonsHeight;
-    constexpr int kFixedTopH = kHeaderHeight + kTopSectionGap + kTimerHeight + kTopSectionGap
+    constexpr int kBottomStripH = kTopSectionGap + kCompactBarHeight + kTopSectionGap;
+    constexpr int kFixedTopH = kHeaderHeight + kTopSectionGap + kMenuBarHeight + kTopSectionGap
+                             + kTimerHeight + kTopSectionGap
                              + kCompactBarHeight + kTopSectionGap;
     constexpr int kFixedChromeH = kOuterMargin * 2 + kFixedTopH + kBottomStripH;
 
@@ -1340,24 +1272,40 @@ void MainContentComponent::resized()
     auto a = getLocalBounds().reduced (kOuterMargin);
     auto bottomStrip = a.removeFromBottom (kBottomStripH);
 
+    // ── Menu bar strip (above header) ─────────────────────────────────────────
+    {
+        auto menuStrip = a.removeFromTop (kMenuBarHeight);
+        const juce::Font menuFont (juce::FontOptions (14.0f).withStyle ("Bold"));
+        constexpr int kMenuBtnPad = 18;
+        const int fileW = juce::jmax (42, menuFont.getStringWidth ("File") + kMenuBtnPad);
+        const int viewW = juce::jmax (42, menuFont.getStringWidth ("View") + kMenuBtnPad);
+        const int helpW = juce::jmax (42, menuFont.getStringWidth ("Help") + kMenuBtnPad);
+        constexpr int kMenuBtnGap = 2;
+        fileMenuBtn_.setBounds (menuStrip.removeFromLeft (fileW));
+        menuStrip.removeFromLeft (kMenuBtnGap);
+        viewMenuBtn_.setBounds (menuStrip.removeFromLeft (viewW));
+        menuStrip.removeFromLeft (kMenuBtnGap);
+        helpMenuBtn_.setBounds (menuStrip.removeFromLeft (helpW));
+    }
+    a.removeFromTop (4);
+
     headerRect_ = a.removeFromTop (40);
     auto header = headerRect_.reduced (6, 0);
-    auto help = header.removeFromRight (28);
-    helpButton_.setBounds (help.withSizeKeepingCentre (28, 28));
+
+    // Version label moved to right side (where the old help button was)
+    const int versionW = juce::jmax (58, titleVersionLabel_.getFont().getStringWidth (titleVersionLabel_.getText()) + 8);
+    titleVersionLabel_.setBounds (header.removeFromRight (versionW).withSizeKeepingCentre (versionW, 16));
 
     auto titleArea = header;
     const int easyW = juce::jmax (46, titleEasyLabel_.getFont().getStringWidth ("EASY ") + 6);
     const int bridgeW = juce::jmax (74, titleBridgeLabel_.getFont().getStringWidth ("BRIDGE") + 6);
-    const int versionW = juce::jmax (58, titleVersionLabel_.getFont().getStringWidth (titleVersionLabel_.getText()) + 4);
     const int startX = titleArea.getX() + 2;
     const int titleYOffset = 6;
     const int titleH = juce::jmax (1, titleArea.getHeight() - titleYOffset);
     const int easyX = startX;
     const int bridgeX = easyX + easyW;
-    const int versionX = bridgeX + bridgeW + 2;
     titleEasyLabel_.setBounds (easyX, titleArea.getY() + titleYOffset, easyW, titleH);
     titleBridgeLabel_.setBounds (bridgeX, titleArea.getY() + titleYOffset, bridgeW, titleH);
-    titleVersionLabel_.setBounds (versionX, titleArea.getY() + titleYOffset, versionW, titleH);
     a.removeFromTop (4);
     tcLabel_.setBounds (a.removeFromTop (90));
     a.removeFromTop (4);
@@ -1606,13 +1554,8 @@ void MainContentComponent::resized()
     // Status and buttons: laid out in bottom strip (pinned to actual window bottom).
     bottomStrip.removeFromTop (4);
     statusRect_ = bottomStrip.removeFromTop (kCompactBarHeight);
-    bottomStrip.removeFromTop (4);
-    buttonRowRect_ = bottomStrip.removeFromTop (40);
 
     statusButton_.setBounds (statusRect_);
-    auto buttons = buttonRowRect_;
-    settingsButton_.setBounds (buttons.removeFromLeft (buttons.getWidth() / 2).reduced (1, 0));
-    quitButton_.setBounds (buttons.reduced (1, 0));
 
     // BUG-6 fix: removed the redundant setVisible block here that was immediately
     // overridden by the sourceExpanded_ && src == N block that follows.
@@ -2833,22 +2776,24 @@ void MainContentComponent::resetToDefaults()
     setStatusText ("Config reset", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
 }
 
-void MainContentComponent::openSettingsMenu()
+void MainContentComponent::openFileMenu()
 {
     juce::PopupMenu m;
     m.addItem (1, "Save");
     m.addItem (2, "Save As...");
     m.addSeparator();
     m.addItem (3, "Load...");
-    m.addItem (4, "Load on startup", true, autoLoadOnStartup_);
+    m.addItem (4, "Load Last Config", true, autoLoadOnStartup_);
     m.addSeparator();
     m.addItem (5, "Reset config");
     m.addSeparator();
     m.addItem (6, "Rescan audio");
     m.addSeparator();
     m.addItem (7, "Close to tray", true, closeToTray_);
+    m.addSeparator();
+    m.addItem (8, "Quit");
 
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&settingsButton_),
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&fileMenuBtn_),
                      [safe = juce::Component::SafePointer<MainContentComponent> (this)] (int result)
                      {
                          if (safe == nullptr)
@@ -2878,9 +2823,74 @@ void MainContentComponent::openSettingsMenu()
                                  safe->setStatusText (safe->closeToTray_ ? "STOPPED - close to tray ON" : "STOPPED - close to tray OFF",
                                                       juce::Colour::fromRGB (0xec, 0x48, 0x3c));
                                  break;
+                             case 8:
+                                 if (auto* window = safe->findParentComponentOfClass<MainWindow>())
+                                     window->quitFromTray();
+                                 else
+                                     juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                                 break;
                              default: break;
                          }
                      });
+}
+
+void MainContentComponent::openViewMenu()
+{
+    juce::PopupMenu m;
+    m.addItem (1, "Expand All");
+    m.addItem (2, "Collapse All");
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&viewMenuBtn_),
+                     [safe = juce::Component::SafePointer<MainContentComponent> (this)] (int result)
+                     {
+                         if (safe == nullptr)
+                             return;
+                         if (result == 1) safe->expandAll();
+                         else if (result == 2) safe->collapseAll();
+                     });
+}
+
+void MainContentComponent::openHelpMenu()
+{
+    juce::PopupMenu m;
+    m.addItem (1, "Help");
+    m.addSeparator();
+    m.addItem (2, "About Easy Bridge...");
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&helpMenuBtn_),
+                     [safe = juce::Component::SafePointer<MainContentComponent> (this)] (int result)
+                     {
+                         if (safe == nullptr)
+                             return;
+                         if (result == 1) safe->openHelpPage();
+                         else if (result == 2) safe->openAboutDialog();
+                     });
+}
+
+void MainContentComponent::collapseAll()
+{
+    sourceExpanded_  = false;  sourceExpandBtn_.setExpanded (false);
+    outLtcExpanded_  = false;  outLtcExpandBtn_.setExpanded (false);
+    outMtcExpanded_  = false;  outMtcExpandBtn_.setExpanded (false);
+    outArtExpanded_  = false;  outArtExpandBtn_.setExpanded (false);
+    updateWindowHeight();
+    resized();
+}
+
+void MainContentComponent::expandAll()
+{
+    sourceExpanded_  = true;   sourceExpandBtn_.setExpanded (true);
+    outLtcExpanded_  = true;   outLtcExpandBtn_.setExpanded (true);
+    outMtcExpanded_  = true;   outMtcExpandBtn_.setExpanded (true);
+    outArtExpanded_  = true;   outArtExpandBtn_.setExpanded (true);
+    updateWindowHeight();
+    resized();
+}
+
+// BridgeAboutDialog → moved to ui/windows/BridgeAboutDialog.h
+
+void MainContentComponent::openAboutDialog()
+{
+    BridgeAboutDialog::show (findParentComponentOfClass<juce::Component>(),
+                             titleEasyFont_, titleBridgeFont_);
 }
 
 void MainContentComponent::openHelpPage()
