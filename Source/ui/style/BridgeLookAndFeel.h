@@ -28,13 +28,13 @@ public:
         if (isPlusMinus)
         {
             c = kInput;
-            if (isMouseOverButton || isButtonDown)
-                c = isButtonDown ? kTeal.darker (0.15f) : kTeal;
+            if (isButtonDown)
+                c = c.darker (0.15f);
+            else if (isMouseOverButton)
+                c = c.brighter (0.12f);
 
             g.setColour (c);
             g.fillRoundedRectangle (bounds, 5.0f);
-            g.setColour (juce::Colour::fromRGB (0x4a, 0x4a, 0x4a));
-            g.drawRoundedRectangle (bounds, 5.0f, 1.0f);
             return;
         }
 
@@ -75,7 +75,9 @@ public:
             return;
         }
 
-        const auto iconColour = (isMouseOverButton || isButtonDown) ? kBg : juce::Colour::fromRGB (0x90, 0x90, 0x90);
+        auto iconColour = juce::Colour::fromRGB (0x90, 0x90, 0x90);
+        if (isMouseOverButton || isButtonDown)
+            iconColour = iconColour.brighter (0.4f);
         const auto b = button.getLocalBounds().toFloat();
         const float cx = b.getCentreX();
         const float cy = b.getCentreY();

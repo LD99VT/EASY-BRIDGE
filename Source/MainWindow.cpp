@@ -85,8 +85,8 @@ void FpsConvertStrip::paint (juce::Graphics& g)
     auto buttonsArea = area;
     const auto inactiveBg = kInput;
     const auto inactiveText = juce::Colour::fromRGB (0xca, 0xca, 0xca);
-    const auto activeBg = kTeal;
-    const auto activeText = kBg;
+    const auto activeBg = kSection;
+    const auto activeText = juce::Colour::fromRGB (0xea, 0xea, 0xea);
     auto font = juce::FontOptions (14.0f);
     font = font.withStyle ("Medium");
 
