@@ -20,6 +20,7 @@ Source/core/BridgeVersion.h
 # Installer binaries (built by CI — not committed to source)
 Installer/*.exe
 Installer/*.dmg
+test_builds/
 
 # macOS
 .DS_Store

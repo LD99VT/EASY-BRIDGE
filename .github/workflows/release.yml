@@ -146,6 +146,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -159,4 +162,3 @@ jobs:
             dist/easybridge-macos-universal/EasyBridge-*.dmg
 
           body_path: .github/release-notes.md
-          generate_release_notes: true

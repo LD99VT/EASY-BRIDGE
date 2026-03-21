@@ -36,6 +36,9 @@ Receive timecode in one format — send it out in another, simultaneously, with 
 - `LTC In` and `LTC Out` now use the real audio channel count from the selected device, including stereo pairs such as `1+2`, `3+4`, and more when available.
 - `LTC Out`, `MTC Out`, and `ArtNet Out` now support per-output FPS conversion.
 - `ArtNet Out` now supports up to 5 send targets, each with its own destination IP and collapsible adapter selection.
+- Built-in update checking now runs on startup and from `Help -> Check for Updates`.
+- On Windows, `Update Now` downloads the latest installer and starts a silent update after Easy Bridge closes.
+- On macOS, `Update Now` downloads and opens the latest `.dmg` so the app can be replaced cleanly.
 - The temporary `Ableton Link` experiment was removed. Current sources remain `LTC`, `MTC`, `ArtNet`, `OSC`, and `System Time`.
 
 ---
@@ -50,6 +53,8 @@ Pre-built installers are attached to each [GitHub Release](../../releases/latest
 | macOS    | `EasyBridge-<version>.dmg` — universal binary (Intel + Apple Silicon) |
 
 ---
+
+Easy Bridge can also check for updates directly inside the app. When a newer release is found, the Help menu changes from `Check for Updates` to `Update Now (vX.Y.Z)`.
 
 ## Build from source
 

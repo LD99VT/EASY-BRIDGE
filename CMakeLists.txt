@@ -121,8 +121,12 @@ target_sources(EasyBridge PRIVATE
   Source/ui/widgets/DotToggle.h
   Source/ui/widgets/MacSwitch.h
   Source/ui/widgets/LevelMeter.h
+  Source/ui/widgets/StatusBarComponent.h
   Source/ui/DarkDialog.h
   Source/ui/StatusMonitorWindow.h
+  Source/ui/updates/UpdateChecker.h
+  Source/ui/updates/UpdateInstaller.h
+  Source/ui/windows/UpdatePromptWindow.h
 )
 
 target_compile_definitions(EasyBridge PRIVATE

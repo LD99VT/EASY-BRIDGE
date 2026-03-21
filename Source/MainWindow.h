@@ -19,8 +19,11 @@
 #include "ui/widgets/MacSwitch.h"
 #include "ui/widgets/LevelMeter.h"
 #include "ui/widgets/StatusBarComponent.h"
+#include "ui/updates/UpdateChecker.h"
+#include "ui/updates/UpdateInstaller.h"
 #include "ui/DarkDialog.h"
 #include "ui/windows/BridgeAboutDialog.h"
+#include "ui/windows/UpdatePromptWindow.h"
 
 namespace bridge
 {
@@ -75,6 +78,10 @@ private:
 
     void loadFontsAndIcon();
     void applyLookAndFeel();
+    void layoutTopChrome (juce::Rectangle<int>& area);
+    void layoutScrollableRows (juce::Rectangle<int> area, int fixedChromeHeight);
+    void layoutBottomStatusBar (juce::Rectangle<int> bottomStrip);
+    void updateControlVisibility (int sourceId);
     void restartSelectedSource();
     void queueLtcOutputApply();
     void ltcOutputApplyLoop();
@@ -106,6 +113,12 @@ private:
     void openFileMenu();
     void openViewMenu();
     void openHelpMenu();
+    void requestUpdateCheck (bool manual);
+    void pollUpdateChecker();
+    void showUpdatePrompt();
+    void beginUpdateInstall();
+    void openLatestReleasePage();
+    bool launchDownloadedUpdate (const juce::File& packageFile);
     void collapseAll();
     void expandAll();
     void openAboutDialog();
@@ -149,6 +162,18 @@ private:
     std::unique_ptr<FpsIndicatorStrip> fpsIndicatorStrip_;
     StatusBarComponent statusButton_;
     juce::Component::SafePointer<juce::Component> statusMonitor_;
+    UpdateChecker updateChecker_ { "https://api.github.com/repos/LD99VT/EASY-BRIDGE/releases/latest" };
+    UpdateInstaller updateInstaller_;
+    int updateCheckDelay_ { 90 };
+    int updateCheckTimeoutTicks_ { 0 };
+    bool updateCheckInFlight_ { false };
+    bool updateCheckManual_ { false };
+    bool updatePromptShown_ { false };
+    bool updateAvailable_ { false };
+    juce::String availableVersion_;
+    juce::String availableReleaseUrl_;
+    juce::String availableAssetUrl_;
+    juce::String availableReleaseNotes_;
     juce::TextButton fileMenuBtn_  { "File" };
     juce::TextButton viewMenuBtn_  { "View" };
     juce::TextButton helpMenuBtn_  { "Help" };

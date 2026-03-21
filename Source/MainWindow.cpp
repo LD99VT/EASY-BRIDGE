@@ -3,6 +3,10 @@
 #include "platform/WindowUtils.h"
 #include "ui/StatusMonitorWindow.h"
 #include <cmath>
+
+#if JUCE_WINDOWS
+#include <windows.h>
+#endif
 // BUG-3 fix: dwmapi loaded dynamically in platform/WindowUtils.cpp — no static link here
 
 namespace bridge
@@ -1260,6 +1264,338 @@ void MainContentComponent::paint (juce::Graphics& g)
     // (menu bar has no separate background — it sits flush in the window bg)
 }
 
+void MainContentComponent::layoutTopChrome (juce::Rectangle<int>& area)
+{
+    auto menuStrip = area.removeFromTop (kMenuBarHeight);
+    const juce::Font menuFont (juce::FontOptions (14.0f).withStyle ("Bold"));
+    constexpr int kMenuBtnPad = 18;
+    const int fileW = juce::jmax (42, menuFont.getStringWidth ("File") + kMenuBtnPad);
+    const int viewW = juce::jmax (42, menuFont.getStringWidth ("View") + kMenuBtnPad);
+    const int helpW = juce::jmax (42, menuFont.getStringWidth ("Help") + kMenuBtnPad);
+    constexpr int kMenuBtnGap = 2;
+    fileMenuBtn_.setBounds (menuStrip.removeFromLeft (fileW));
+    menuStrip.removeFromLeft (kMenuBtnGap);
+    viewMenuBtn_.setBounds (menuStrip.removeFromLeft (viewW));
+    menuStrip.removeFromLeft (kMenuBtnGap);
+    helpMenuBtn_.setBounds (menuStrip.removeFromLeft (helpW));
+    area.removeFromTop (4);
+
+    headerRect_ = area.removeFromTop (40);
+    auto header = headerRect_.reduced (6, 0);
+    const int versionW = juce::jmax (58, titleVersionLabel_.getFont().getStringWidth (titleVersionLabel_.getText()) + 8);
+    titleVersionLabel_.setBounds (header.removeFromRight (versionW).withSizeKeepingCentre (versionW, 16));
+
+    auto titleArea = header;
+    const int easyW = juce::jmax (46, titleEasyLabel_.getFont().getStringWidth ("EASY ") + 6);
+    const int bridgeW = juce::jmax (74, titleBridgeLabel_.getFont().getStringWidth ("BRIDGE") + 6);
+    const int startX = titleArea.getX() + 2;
+    const int titleYOffset = 6;
+    const int titleH = juce::jmax (1, titleArea.getHeight() - titleYOffset);
+    titleEasyLabel_.setBounds (startX, titleArea.getY() + titleYOffset, easyW, titleH);
+    titleBridgeLabel_.setBounds (startX + easyW, titleArea.getY() + titleYOffset, bridgeW, titleH);
+    area.removeFromTop (4);
+    tcLabel_.setBounds (area.removeFromTop (90));
+    area.removeFromTop (4);
+    if (fpsIndicatorStrip_ != nullptr)
+        fpsIndicatorStrip_->setBounds (area.removeFromTop (kCompactBarHeight));
+    area.removeFromTop (4);
+}
+
+void MainContentComponent::layoutScrollableRows (juce::Rectangle<int> area, int fixedChromeHeight)
+{
+    rowsViewport_.setBounds (area);
+    const int rowsContentH = juce::jmax (0, calcPreferredHeight() - fixedChromeHeight);
+    const bool needsScrollbar = (rowsContentH > area.getHeight());
+    const int panelW = needsScrollbar
+                           ? area.getWidth() - rowsViewport_.getScrollBarThickness()
+                           : area.getWidth();
+    rowsPanel_->setSize (panelW, rowsContentH);
+
+    rowsPanel_->paramRowRects.clear();
+    rowsPanel_->sectionRowRects.clear();
+    auto rb = juce::Rectangle<int> (0, 0, rowsPanel_->getWidth(), rowsPanel_->getHeight());
+
+    auto row = [&rb] (int h = 40)
+    {
+        auto r = rb.removeFromTop (h);
+        rb.removeFromTop (4);
+        return r;
+    };
+    auto fieldRow = [&] (juce::Label& lbl, juce::Component& editor)
+    {
+        auto r = row();
+        rowsPanel_->paramRowRects.add (r);
+        lbl.setVisible (true);
+        editor.setVisible (true);
+        auto labelArea = r.removeFromLeft (112);
+        auto controlArea = r.reduced (0, 3);
+        lbl.setBounds (labelArea.reduced (10, 0));
+        if (&editor == &ltcInLevelBar_)
+        {
+            auto bar = controlArea.reduced (6, 0);
+            const int h = 8;
+            bar = juce::Rectangle<int> (bar.getX(), bar.getCentreY() - h / 2, bar.getWidth(), h);
+            editor.setBounds (bar);
+        }
+        else
+        {
+            editor.setBounds (controlArea.reduced (2, 0));
+        }
+    };
+    auto hideRowLabels = [this]
+    {
+        juce::Label* labels[] = {
+            &inDriverLbl_, &inDeviceLbl_, &inChannelLbl_, &inRateLbl_, &inLevelLbl_, &inGainLbl_,
+            &mtcInLbl_, &artInLbl_, &artInListenIpLbl_, &oscAdapterLbl_, &oscIpLbl_, &oscPortLbl_, &oscFpsLbl_, &systemTimeFpsLbl_, &oscStrLbl_, &oscFloatLbl_, &oscFloatTypeLbl_, &oscFloatMaxLbl_,
+            &outDriverLbl_, &outDeviceLbl_, &outChannelLbl_, &outRateLbl_, &outConvertLbl_, &outOffsetLbl_, &outLevelLbl_,
+            &mtcOutLbl_, &mtcConvertLbl_, &mtcOffsetLbl_, &artConvertLbl_, &artOffsetLbl_,
+            &artSendLbls_[0], &artSendLbls_[1], &artSendLbls_[2], &artSendLbls_[3], &artSendLbls_[4],
+            &artAdapterLbls_[0], &artAdapterLbls_[1], &artAdapterLbls_[2], &artAdapterLbls_[3], &artAdapterLbls_[4]
+        };
+        for (auto* l : labels)
+            l->setVisible (false);
+    };
+    hideRowLabels();
+
+    auto sourceRow = row();
+    rowsPanel_->sectionRowRects.add (sourceRow);
+    auto sourceLabelZone = sourceRow.removeFromLeft (112);
+    {
+        auto btnHost = sourceLabelZone.removeFromLeft (36);
+        const int d = 28;
+        sourceExpandBtn_.setBounds (btnHost.getX() + 3 + (btnHost.getWidth() - d) / 2,
+                                    btnHost.getY() + (btnHost.getHeight() - d) / 2,
+                                    d, d);
+    }
+    sourceHeaderLabel_.setBounds (sourceLabelZone);
+    sourceCombo_.setBounds (sourceRow.reduced (2, 3));
+    sourceHeaderLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    sourceExpandBtn_.setExpanded (sourceExpanded_);
+
+    const auto src = sourceCombo_.getSelectedId();
+    if (sourceExpanded_ && src == 1)
+    {
+        fieldRow (inDriverLbl_, ltcInDriverCombo_);
+        fieldRow (inDeviceLbl_, ltcInDeviceCombo_);
+        fieldRow (inChannelLbl_, ltcInChannelCombo_);
+        fieldRow (inRateLbl_, ltcInSampleRateCombo_);
+        fieldRow (inLevelLbl_, ltcInLevelBar_);
+        fieldRow (inGainLbl_, ltcInGainSlider_);
+    }
+    else if (sourceExpanded_ && src == 2)
+    {
+        fieldRow (mtcInLbl_, mtcInCombo_);
+    }
+    else if (sourceExpanded_ && src == 3)
+    {
+        fieldRow (artInLbl_, artnetInCombo_);
+        fieldRow (artInListenIpLbl_, artnetListenIpEditor_);
+    }
+    else if (sourceExpanded_ && src == 4)
+    {
+        fieldRow (oscAdapterLbl_, oscAdapterCombo_);
+        fieldRow (oscIpLbl_, oscIpEditor_);
+        fieldRow (oscPortLbl_, oscPortEditor_);
+        fieldRow (oscFpsLbl_, oscFpsCombo_);
+        fieldRow (oscStrLbl_, oscAddrStrEditor_);
+        fieldRow (oscFloatLbl_, oscAddrFloatEditor_);
+        fieldRow (oscFloatTypeLbl_, oscFloatTypeCombo_);
+        if (oscFloatTypeCombo_.getSelectedId() == 3)
+            fieldRow (oscFloatMaxLbl_, oscFloatMaxEditor_);
+        else
+        {
+            oscFloatMaxLbl_.setVisible (false);
+            oscFloatMaxEditor_.setVisible (false);
+        }
+    }
+    else if (sourceExpanded_ && src == 5)
+    {
+        fieldRow (systemTimeFpsLbl_, systemTimeFpsCombo_);
+    }
+
+    auto ltcHeader = row();
+    rowsPanel_->sectionRowRects.add (ltcHeader);
+    auto ltcHeaderCopy = ltcHeader;
+    outLtcHeaderLabel_.setBounds (ltcHeaderCopy);
+    {
+        auto btnHost = ltcHeader.removeFromLeft (36);
+        const int d = 28;
+        outLtcExpandBtn_.setBounds (btnHost.getX() + 3 + (btnHost.getWidth() - d) / 2,
+                                    btnHost.getY() + (btnHost.getHeight() - d) / 2,
+                                    d, d);
+    }
+    ltcHeader.removeFromLeft (110);
+    ltcOutSwitch_.setBounds (ltcHeader.removeFromRight (54).reduced (0, 6));
+    {
+        auto dotHost = ltcHeader.removeFromRight (22);
+        const int d = 18;
+        ltcThruDot_.setBounds (dotHost.getCentreX() - d / 2, dotHost.getCentreY() - d / 2, d, d);
+    }
+    ltcThruLbl_.setBounds (ltcHeader.removeFromRight (40));
+    outLtcHeaderLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    outLtcExpandBtn_.setExpanded (outLtcExpanded_);
+
+    if (outLtcExpanded_)
+    {
+        fieldRow (outDriverLbl_, ltcOutDriverCombo_);
+        fieldRow (outDeviceLbl_, ltcOutDeviceCombo_);
+        fieldRow (outChannelLbl_, ltcOutChannelCombo_);
+        fieldRow (outRateLbl_, ltcOutSampleRateCombo_);
+        fieldRow (outConvertLbl_, ltcConvertStrip_);
+        fieldRow (outOffsetLbl_, ltcOffsetEditor_);
+        fieldRow (outLevelLbl_, ltcOutLevelSlider_);
+    }
+
+    auto mtcHeader = row();
+    rowsPanel_->sectionRowRects.add (mtcHeader);
+    auto mtcHeaderCopy = mtcHeader;
+    outMtcHeaderLabel_.setBounds (mtcHeaderCopy);
+    {
+        auto btnHost = mtcHeader.removeFromLeft (36);
+        const int d = 28;
+        outMtcExpandBtn_.setBounds (btnHost.getX() + 3 + (btnHost.getWidth() - d) / 2,
+                                    btnHost.getY() + (btnHost.getHeight() - d) / 2,
+                                    d, d);
+    }
+    mtcHeader.removeFromLeft (110);
+    mtcOutSwitch_.setBounds (mtcHeader.removeFromRight (54).reduced (0, 6));
+    outMtcHeaderLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    outMtcExpandBtn_.setExpanded (outMtcExpanded_);
+
+    if (outMtcExpanded_)
+    {
+        fieldRow (mtcOutLbl_, mtcOutCombo_);
+        fieldRow (mtcConvertLbl_, mtcConvertStrip_);
+        fieldRow (mtcOffsetLbl_, mtcOffsetEditor_);
+    }
+
+    auto artHeader = row();
+    rowsPanel_->sectionRowRects.add (artHeader);
+    auto artHeaderCopy = artHeader;
+    outArtHeaderLabel_.setBounds (artHeaderCopy);
+    {
+        auto btnHost = artHeader.removeFromLeft (36);
+        const int d = 28;
+        outArtExpandBtn_.setBounds (btnHost.getX() + 3 + (btnHost.getWidth() - d) / 2,
+                                    btnHost.getY() + (btnHost.getHeight() - d) / 2,
+                                    d, d);
+    }
+    artHeader.removeFromLeft (110);
+    artnetOutSwitch_.setBounds (artHeader.removeFromRight (54).reduced (0, 6));
+    outArtHeaderLabel_.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    outArtExpandBtn_.setExpanded (outArtExpanded_);
+
+    if (outArtExpanded_)
+    {
+        for (int i = 0; i < artnetDestVisibleCount_; ++i)
+        {
+            auto targetRow = row();
+            rowsPanel_->paramRowRects.add (targetRow);
+
+            auto arrowHost = targetRow.removeFromLeft (36);
+            const int arrowSize = 28;
+            artnetTargetExpandButtons_[(size_t) i].setBounds (arrowHost.getX() + 3 + (arrowHost.getWidth() - arrowSize) / 2,
+                                                              arrowHost.getY() + (arrowHost.getHeight() - arrowSize) / 2,
+                                                              arrowSize, arrowSize);
+            artnetTargetExpandButtons_[(size_t) i].setExpanded (artnetTargetAdapterExpanded_[(size_t) i]);
+
+            auto labelArea = targetRow.removeFromLeft (76);
+            artSendLbls_[(size_t) i].setBounds (labelArea.reduced (6, 0));
+
+            auto controlArea = targetRow.reduced (2, 3);
+            auto actionArea = controlArea.removeFromRight (40);
+            auto portArea = controlArea.removeFromRight (0);
+            juce::ignoreUnused (portArea);
+            artnetDestIpEditors_[(size_t) i].setBounds (controlArea);
+
+            if (i == 0)
+                artnetAddIpButton_.setBounds (actionArea.reduced (2, 0));
+            else
+                artnetDestRemoveButtons_[(size_t) (i - 1)].setBounds (actionArea.reduced (2, 0));
+
+            if (artnetTargetAdapterExpanded_[(size_t) i])
+            {
+                auto adapterRow = row();
+                rowsPanel_->paramRowRects.add (adapterRow);
+                auto spacer = adapterRow.removeFromLeft (36);
+                juce::ignoreUnused (spacer);
+                auto adapterLabelArea = adapterRow.removeFromLeft (76);
+                artAdapterLbls_[(size_t) i].setBounds (adapterLabelArea.reduced (6, 0));
+                artnetTargetAdapterCombos_[(size_t) i].setBounds (adapterRow.reduced (2, 3));
+            }
+        }
+
+        fieldRow (artConvertLbl_, artnetConvertStrip_);
+        fieldRow (artOffsetLbl_, artnetOffsetEditor_);
+    }
+
+    rowsPanel_->repaint();
+}
+
+void MainContentComponent::layoutBottomStatusBar (juce::Rectangle<int> bottomStrip)
+{
+    bottomStrip.removeFromTop (4);
+    statusRect_ = bottomStrip.removeFromTop (kCompactBarHeight);
+    statusButton_.setBounds (statusRect_);
+}
+
+void MainContentComponent::updateControlVisibility (int src)
+{
+    juce::Component* comps[] = {
+        &ltcInDriverCombo_, &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_, &ltcInLevelBar_, &ltcInGainSlider_,
+        &mtcInCombo_, &artnetInCombo_, &artnetListenIpEditor_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &systemTimeFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_, &oscFloatTypeCombo_, &oscFloatMaxEditor_,
+        &ltcConvertStrip_, &mtcConvertStrip_, &artnetConvertStrip_
+    };
+    for (auto* c : comps)
+        if (c != nullptr)
+            c->setVisible (false);
+
+    ltcInDriverCombo_.setVisible (sourceExpanded_ && src == 1);
+    ltcInDeviceCombo_.setVisible (sourceExpanded_ && src == 1);
+    ltcInChannelCombo_.setVisible (sourceExpanded_ && src == 1);
+    ltcInSampleRateCombo_.setVisible (sourceExpanded_ && src == 1);
+    ltcInLevelBar_.setVisible (sourceExpanded_ && src == 1);
+    ltcInGainSlider_.setVisible (sourceExpanded_ && src == 1);
+    mtcInCombo_.setVisible (sourceExpanded_ && src == 2);
+    artnetInCombo_.setVisible (sourceExpanded_ && src == 3);
+    artnetListenIpEditor_.setVisible (sourceExpanded_ && src == 3);
+    oscAdapterCombo_.setVisible (sourceExpanded_ && src == 4);
+    oscIpEditor_.setVisible (sourceExpanded_ && src == 4);
+    oscPortEditor_.setVisible (sourceExpanded_ && src == 4);
+    oscFpsCombo_.setVisible (sourceExpanded_ && src == 4);
+    systemTimeFpsCombo_.setVisible (sourceExpanded_ && src == 5);
+    oscAddrStrEditor_.setVisible (sourceExpanded_ && src == 4);
+    oscAddrFloatEditor_.setVisible (sourceExpanded_ && src == 4);
+    oscFloatTypeCombo_.setVisible (sourceExpanded_ && src == 4);
+    oscFloatMaxEditor_.setVisible (sourceExpanded_ && src == 4 && oscFloatTypeCombo_.getSelectedId() == 3);
+
+    ltcOutDriverCombo_.setVisible (outLtcExpanded_);
+    ltcOutDeviceCombo_.setVisible (outLtcExpanded_);
+    ltcOutChannelCombo_.setVisible (outLtcExpanded_);
+    ltcOutSampleRateCombo_.setVisible (outLtcExpanded_);
+    ltcConvertStrip_.setVisible (outLtcExpanded_);
+    ltcOffsetEditor_.setVisible (outLtcExpanded_);
+    ltcOutLevelSlider_.setVisible (outLtcExpanded_);
+    mtcOutCombo_.setVisible (outMtcExpanded_);
+    mtcConvertStrip_.setVisible (outMtcExpanded_);
+    mtcOffsetEditor_.setVisible (outMtcExpanded_);
+    artnetAddIpButton_.setVisible (outArtExpanded_);
+    artnetConvertStrip_.setVisible (outArtExpanded_);
+
+    for (int i = 0; i < (int) artnetDestIpEditors_.size(); ++i)
+    {
+        const bool rowVisible = outArtExpanded_ && i < artnetDestVisibleCount_;
+        artnetTargetExpandButtons_[(size_t) i].setVisible (rowVisible);
+        artSendLbls_[(size_t) i].setVisible (rowVisible);
+        artnetDestIpEditors_[(size_t) i].setVisible (rowVisible);
+        artAdapterLbls_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
+        artnetTargetAdapterCombos_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
+    }
+    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
+        artnetDestRemoveButtons_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
+    artnetOffsetEditor_.setVisible (outArtExpanded_);
+}
+
 void MainContentComponent::resized()
 {
     constexpr int kBottomStripH = kTopSectionGap + kCompactBarHeight + kTopSectionGap;
@@ -1273,45 +1609,7 @@ void MainContentComponent::resized()
     auto bottomStrip = a.removeFromBottom (kBottomStripH);
 
     // ── Menu bar strip (above header) ─────────────────────────────────────────
-    {
-        auto menuStrip = a.removeFromTop (kMenuBarHeight);
-        const juce::Font menuFont (juce::FontOptions (14.0f).withStyle ("Bold"));
-        constexpr int kMenuBtnPad = 18;
-        const int fileW = juce::jmax (42, menuFont.getStringWidth ("File") + kMenuBtnPad);
-        const int viewW = juce::jmax (42, menuFont.getStringWidth ("View") + kMenuBtnPad);
-        const int helpW = juce::jmax (42, menuFont.getStringWidth ("Help") + kMenuBtnPad);
-        constexpr int kMenuBtnGap = 2;
-        fileMenuBtn_.setBounds (menuStrip.removeFromLeft (fileW));
-        menuStrip.removeFromLeft (kMenuBtnGap);
-        viewMenuBtn_.setBounds (menuStrip.removeFromLeft (viewW));
-        menuStrip.removeFromLeft (kMenuBtnGap);
-        helpMenuBtn_.setBounds (menuStrip.removeFromLeft (helpW));
-    }
-    a.removeFromTop (4);
-
-    headerRect_ = a.removeFromTop (40);
-    auto header = headerRect_.reduced (6, 0);
-
-    // Version label moved to right side (where the old help button was)
-    const int versionW = juce::jmax (58, titleVersionLabel_.getFont().getStringWidth (titleVersionLabel_.getText()) + 8);
-    titleVersionLabel_.setBounds (header.removeFromRight (versionW).withSizeKeepingCentre (versionW, 16));
-
-    auto titleArea = header;
-    const int easyW = juce::jmax (46, titleEasyLabel_.getFont().getStringWidth ("EASY ") + 6);
-    const int bridgeW = juce::jmax (74, titleBridgeLabel_.getFont().getStringWidth ("BRIDGE") + 6);
-    const int startX = titleArea.getX() + 2;
-    const int titleYOffset = 6;
-    const int titleH = juce::jmax (1, titleArea.getHeight() - titleYOffset);
-    const int easyX = startX;
-    const int bridgeX = easyX + easyW;
-    titleEasyLabel_.setBounds (easyX, titleArea.getY() + titleYOffset, easyW, titleH);
-    titleBridgeLabel_.setBounds (bridgeX, titleArea.getY() + titleYOffset, bridgeW, titleH);
-    a.removeFromTop (4);
-    tcLabel_.setBounds (a.removeFromTop (90));
-    a.removeFromTop (4);
-    if (fpsIndicatorStrip_ != nullptr)
-        fpsIndicatorStrip_->setBounds (a.removeFromTop (kCompactBarHeight));
-    a.removeFromTop (4);
+    layoutTopChrome (a);
 
     // ── Scrollable rows viewport ─────────────────────────────────────────────
     // `a` now holds the middle area between the fixed top and fixed bottom.
@@ -1551,71 +1849,9 @@ void MainContentComponent::resized()
     // Redraw the rows panel so updated background rects are visible.
     rowsPanel_->repaint();
 
-    // Status and buttons: laid out in bottom strip (pinned to actual window bottom).
-    bottomStrip.removeFromTop (4);
-    statusRect_ = bottomStrip.removeFromTop (kCompactBarHeight);
+    layoutBottomStatusBar (bottomStrip);
 
-    statusButton_.setBounds (statusRect_);
-
-    // BUG-6 fix: removed the redundant setVisible block here that was immediately
-    // overridden by the sourceExpanded_ && src == N block that follows.
-    auto hideAll = [this]
-    {
-        juce::Component* comps[] = {
-            &ltcInDriverCombo_, &ltcInDeviceCombo_, &ltcInChannelCombo_, &ltcInSampleRateCombo_, &ltcInLevelBar_, &ltcInGainSlider_,
-            &mtcInCombo_, &artnetInCombo_, &artnetListenIpEditor_, &oscAdapterCombo_, &oscIpEditor_, &oscPortEditor_, &oscFpsCombo_, &systemTimeFpsCombo_, &oscAddrStrEditor_, &oscAddrFloatEditor_, &oscFloatTypeCombo_, &oscFloatMaxEditor_,
-            &ltcConvertStrip_, &mtcConvertStrip_, &artnetConvertStrip_
-        };
-        for (auto* c : comps)
-            if (c != nullptr)
-                c->setVisible (false);
-    };
-    hideAll();
-    ltcInDriverCombo_.setVisible (sourceExpanded_ && src == 1);
-    ltcInDeviceCombo_.setVisible (sourceExpanded_ && src == 1);
-    ltcInChannelCombo_.setVisible (sourceExpanded_ && src == 1);
-    ltcInSampleRateCombo_.setVisible (sourceExpanded_ && src == 1);
-    ltcInLevelBar_.setVisible (sourceExpanded_ && src == 1);
-    ltcInGainSlider_.setVisible (sourceExpanded_ && src == 1);
-    mtcInCombo_.setVisible (sourceExpanded_ && src == 2);
-    artnetInCombo_.setVisible (sourceExpanded_ && src == 3);
-    artnetListenIpEditor_.setVisible (sourceExpanded_ && src == 3);
-    oscAdapterCombo_.setVisible (sourceExpanded_ && src == 4);
-    oscIpEditor_.setVisible (sourceExpanded_ && src == 4);
-    oscPortEditor_.setVisible (sourceExpanded_ && src == 4);
-    oscFpsCombo_.setVisible (sourceExpanded_ && src == 4);
-    systemTimeFpsCombo_.setVisible (sourceExpanded_ && src == 5);
-    oscAddrStrEditor_.setVisible (sourceExpanded_ && src == 4);
-    oscAddrFloatEditor_.setVisible (sourceExpanded_ && src == 4);
-    oscFloatTypeCombo_.setVisible (sourceExpanded_ && src == 4);
-    oscFloatMaxEditor_.setVisible (sourceExpanded_ && src == 4 && oscFloatTypeCombo_.getSelectedId() == 3);
-
-    ltcOutDriverCombo_.setVisible (outLtcExpanded_);
-    ltcOutDeviceCombo_.setVisible (outLtcExpanded_);
-    ltcOutChannelCombo_.setVisible (outLtcExpanded_);
-    ltcOutSampleRateCombo_.setVisible (outLtcExpanded_);
-    ltcConvertStrip_.setVisible (outLtcExpanded_);
-    ltcOffsetEditor_.setVisible (outLtcExpanded_);
-    ltcOutLevelSlider_.setVisible (outLtcExpanded_);
-
-    mtcOutCombo_.setVisible (outMtcExpanded_);
-    mtcConvertStrip_.setVisible (outMtcExpanded_);
-    mtcOffsetEditor_.setVisible (outMtcExpanded_);
-
-    artnetAddIpButton_.setVisible (outArtExpanded_);
-    artnetConvertStrip_.setVisible (outArtExpanded_);
-    for (int i = 0; i < (int) artnetDestIpEditors_.size(); ++i)
-    {
-        const bool rowVisible = outArtExpanded_ && i < artnetDestVisibleCount_;
-        artnetTargetExpandButtons_[(size_t) i].setVisible (rowVisible);
-        artSendLbls_[(size_t) i].setVisible (rowVisible);
-        artnetDestIpEditors_[(size_t) i].setVisible (rowVisible);
-        artAdapterLbls_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
-        artnetTargetAdapterCombos_[(size_t) i].setVisible (rowVisible && artnetTargetAdapterExpanded_[(size_t) i]);
-    }
-    for (int i = 0; i < (int) artnetDestRemoveButtons_.size(); ++i)
-        artnetDestRemoveButtons_[(size_t) i].setVisible (outArtExpanded_ && (i + 1) < artnetDestVisibleCount_);
-    artnetOffsetEditor_.setVisible (outArtExpanded_);
+    updateControlVisibility (src);
 }
 
 void MainContentComponent::restartSelectedSource()
@@ -1915,6 +2151,14 @@ void MainContentComponent::timerCallback()
         else if (statusButton_.getText().startsWithIgnoreCase ("RUNNING"))
             setStatusText ("STOPPED - no timecode", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
     }
+
+    if (updateCheckDelay_ > 0)
+    {
+        if (--updateCheckDelay_ == 0)
+            requestUpdateCheck (false);
+    }
+
+    pollUpdateChecker();
 }
 
 void MainContentComponent::refreshDeviceLists()
@@ -2854,15 +3098,217 @@ void MainContentComponent::openHelpMenu()
     juce::PopupMenu m;
     m.addItem (1, "Help");
     m.addSeparator();
-    m.addItem (2, "About Easy Bridge...");
+    if (updateAvailable_ && availableVersion_.isNotEmpty())
+        m.addItem (2, "Update Now (v" + availableVersion_ + ")");
+    else
+        m.addItem (2, "Check for Updates");
+    m.addItem (3, "About Easy Bridge...");
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&helpMenuBtn_),
                      [safe = juce::Component::SafePointer<MainContentComponent> (this)] (int result)
                      {
                          if (safe == nullptr)
                              return;
                          if (result == 1) safe->openHelpPage();
-                         else if (result == 2) safe->openAboutDialog();
+                         else if (result == 2)
+                         {
+                             if (safe->updateAvailable_)
+                                 safe->showUpdatePrompt();
+                             else
+                                 safe->requestUpdateCheck (true);
+                         }
+                         else if (result == 3) safe->openAboutDialog();
                      });
+}
+
+void MainContentComponent::requestUpdateCheck (bool manual)
+{
+    if (updateCheckInFlight_)
+        return;
+
+    updateCheckManual_ = manual;
+    updateCheckInFlight_ = true;
+    updateCheckTimeoutTicks_ = 250;
+    updateChecker_.checkAsync (bridge::version::kAppVersion);
+    setStatusText ("Checking for updates...", juce::Colour::fromRGB (0xa0, 0xa4, 0xac));
+}
+
+void MainContentComponent::showUpdatePrompt()
+{
+    if (availableVersion_.isEmpty() || availableReleaseUrl_.isEmpty())
+        return;
+
+    UpdatePromptWindow::show (bridge::version::kAppVersion,
+                              availableVersion_,
+                              availableReleaseNotes_,
+                              [safe = juce::Component::SafePointer<MainContentComponent> (this)]
+                              {
+                                  if (safe != nullptr)
+                                      safe->beginUpdateInstall();
+                              },
+                              getParentComponent());
+}
+
+void MainContentComponent::beginUpdateInstall()
+{
+    if (updateInstaller_.isBusy())
+        return;
+
+    const auto assetUrl = availableAssetUrl_.isNotEmpty() ? availableAssetUrl_ : availableReleaseUrl_;
+    if (assetUrl.isEmpty())
+    {
+        openLatestReleasePage();
+        return;
+    }
+
+    setStatusText ("Downloading update...", juce::Colour::fromRGB (0xa0, 0xa4, 0xac));
+    updateInstaller_.downloadAsync (availableVersion_,
+                                    assetUrl,
+                                    [safe = juce::Component::SafePointer<MainContentComponent> (this)] (const juce::String& error)
+                                    {
+                                        if (safe == nullptr)
+                                            return;
+
+                                        safe->setStatusText ("Update download failed", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+                                        DarkDialog::show ("Easy Bridge", error, safe->getParentComponent());
+                                    },
+                                    [safe = juce::Component::SafePointer<MainContentComponent> (this)] (const juce::File& packageFile)
+                                    {
+                                        if (safe == nullptr)
+                                            return;
+
+                                        if (! safe->launchDownloadedUpdate (packageFile))
+                                        {
+                                            safe->setStatusText ("Update launch failed", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+                                            DarkDialog::show ("Easy Bridge",
+                                                              "The update package was downloaded, but could not be started automatically.",
+                                                              safe->getParentComponent());
+                                        }
+                                    });
+}
+
+void MainContentComponent::openLatestReleasePage()
+{
+    const auto preferredUrl = availableAssetUrl_.isNotEmpty() ? availableAssetUrl_ : availableReleaseUrl_;
+    if (preferredUrl.isNotEmpty())
+        juce::URL (preferredUrl).launchInDefaultBrowser();
+}
+
+bool MainContentComponent::launchDownloadedUpdate (const juce::File& packageFile)
+{
+    if (! packageFile.existsAsFile())
+        return false;
+
+#if JUCE_WINDOWS
+    const auto pid = (int) ::GetCurrentProcessId();
+    auto helperFile = packageFile.getSiblingFile ("EasyBridge_Update_Helper_" + juce::String (pid) + ".ps1");
+
+    auto escapePs = [] (juce::String s)
+    {
+        return s.replace ("'", "''");
+    };
+
+    const auto installerPath = escapePs (packageFile.getFullPathName());
+    const auto helperPath = escapePs (helperFile.getFullPathName());
+    const juce::String script =
+        "$pidToWait = " + juce::String (pid) + "\n"
+        "$installer = '" + installerPath + "'\n"
+        "while (Get-Process -Id $pidToWait -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 500 }\n"
+        "Start-Process -FilePath $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'\n"
+        "Start-Sleep -Seconds 1\n"
+        "Remove-Item -LiteralPath '" + helperPath + "' -Force -ErrorAction SilentlyContinue\n";
+
+    if (! helperFile.replaceWithText (script))
+        return false;
+
+    auto powershellExe = juce::File::getSpecialLocation (juce::File::windowsSystemDirectory)
+                             .getChildFile ("WindowsPowerShell")
+                             .getChildFile ("v1.0")
+                             .getChildFile ("powershell.exe");
+    if (! powershellExe.existsAsFile())
+        return false;
+
+    const bool started = powershellExe.startAsProcess ("-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \""
+                                                       + helperFile.getFullPathName() + "\"");
+    if (! started)
+        return false;
+
+    setStatusText ("Installing update...", juce::Colour::fromRGB (0x51, 0xc8, 0x7b));
+    if (auto* app = juce::JUCEApplication::getInstance())
+        app->systemRequestedQuit();
+    return true;
+#else
+    const bool started = packageFile.startAsProcess();
+    if (started)
+    {
+       #if JUCE_MAC
+        setStatusText ("Update image opened", juce::Colour::fromRGB (0x51, 0xc8, 0x7b));
+        DarkDialog::show ("Easy Bridge",
+                          "The update image has been opened.\nComplete the app replacement, then relaunch Easy Bridge.",
+                          getParentComponent());
+       #endif
+    }
+    return started;
+#endif
+}
+
+void MainContentComponent::pollUpdateChecker()
+{
+    if (! updateCheckInFlight_)
+        return;
+
+    if (! updateChecker_.hasResult())
+    {
+        if (updateCheckTimeoutTicks_ > 0 && --updateCheckTimeoutTicks_ == 0)
+        {
+            updateCheckInFlight_ = false;
+            updateCheckManual_ = false;
+            setStatusText ("Update check timed out", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+        }
+        return;
+    }
+
+    updateCheckInFlight_ = false;
+    updateCheckTimeoutTicks_ = 0;
+    availableVersion_.clear();
+    availableReleaseUrl_.clear();
+    availableAssetUrl_.clear();
+    availableReleaseNotes_.clear();
+    updateAvailable_ = false;
+
+    if (updateChecker_.didCheckFail())
+    {
+        setStatusText ("Update check failed", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+        if (updateCheckManual_)
+            DarkDialog::show ("Easy Bridge", "Update check failed.\nPlease try again later.", getParentComponent());
+        updateCheckManual_ = false;
+        return;
+    }
+
+    availableVersion_ = updateChecker_.getLatestVersion();
+    availableReleaseUrl_ = updateChecker_.getReleaseUrl();
+    availableAssetUrl_ = updateChecker_.getPreferredAssetUrl();
+    availableReleaseNotes_ = updateChecker_.getReleaseNotes();
+    updateAvailable_ = updateChecker_.isUpdateAvailable();
+
+    if (updateAvailable_)
+    {
+        if (! updatePromptShown_ || updateCheckManual_)
+        {
+            updatePromptShown_ = true;
+            showUpdatePrompt();
+        }
+    }
+    else if (updateCheckManual_)
+    {
+        setStatusText ("You already have the latest version", juce::Colour::fromRGB (0x51, 0xc8, 0x7b));
+        DarkDialog::show ("Easy Bridge", "You already have the latest version.", getParentComponent());
+    }
+    else
+    {
+        setStatusText ("STOPPED - no timecode", juce::Colour::fromRGB (0xec, 0x48, 0x3c));
+    }
+
+    updateCheckManual_ = false;
 }
 
 void MainContentComponent::collapseAll()
